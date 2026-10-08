@@ -124,9 +124,9 @@
 "Website.richTitle" = "Text einfach formatieren";
 "Website.richBody" = "Überschriften, mehrstufige Listen und Markdown-Kürzel bringen Ordnung in deine Gedanken.";
 "Website.imagesTitle" = "Text trifft Bild";
-"Website.imagesBody" = "Bilder einfügen oder hineinziehen. Text und Bilder werden in ihrer ursprünglichen Reihenfolge gespeichert.";
+"Website.imagesBody" = "Bilder einfügen oder hineinziehen. Text und Bilder behalten beim Speichern ihre Reihenfolge.";
 "Website.draftTitle" = "Einfach weiterschreiben";
-"Website.draftBody" = "Ungespeicherte Entwürfe sind nach einem Neustart wieder da – mit Text, Formatierung und Originalbildern.";
+"Website.draftBody" = "Entwürfe kehren nach dem Neustart zurück, mit Text, Formatierung und Originalbildern.";
 "Website.pinTitle" = "Immer in Reichweite";
 "Website.pinBody" = "Halte das Fenster beim Arbeiten im Vordergrund. NotesMate merkt sich auch seine Position.";
 "Website.shortcutsEyebrow" = "DIE HÄNDE BLEIBEN AUF DER TASTATUR";
@@ -145,6 +145,6 @@
 "Website.faqLanguages" = "Ist meine Sprache verfügbar?";
 "Website.faqLanguagesBody" = "NotesMate unterstützt 15 Sprachen und folgt der bevorzugten Sprache von macOS. Auch die Website bietet alle 15 Sprachen, auswählbar im Menü oben.";
 "Website.closingTitle" = "Weniger wechseln. Mehr denken.";
-"Website.footer" = "Für den Mac. Für deine Ideen.";
+"Website.footer" = "Kleines Fenster. Für deine nächste große Idee.";
 "Website.release" = "Versionshinweise";
 "Website.feedback" = "Feedback";

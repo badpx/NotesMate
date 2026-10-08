@@ -5,6 +5,7 @@
 ## 内容与维护
 
 - `index.template.html`、`style.css`、`site.js` 是官网源文件，无第三方运行时、字体服务或统计脚本。
+- 构建会给 CSS 和 JavaScript 链接附加内容摘要，避免新页面继续加载浏览器缓存中的旧样式或脚本。
 - `Website.*` 文案集中于 App 已有的 15 个 `NotesMate/Localization/*.lproj/Localizable.strings` 目录；构建会检查语言与模板键完整性，不允许漏译后回退英文。
 - 英文位于根路径，其他语言有独立目录、页面语言、标题、描述、canonical 和 hreflang；语言选择器切换静态页面。内容与下载在禁用 JavaScript 时仍可用。
 - 中英文浅色／深色预览直接复用 `docs/design/` 最新设计稿：中文浅色 v3，其余 v2。页面裁切显示编辑窗口，标注为设计预览。更换设计图时，更新构建脚本中的素材映射；窗口几何变化时同步调整 CSS 裁切参数。

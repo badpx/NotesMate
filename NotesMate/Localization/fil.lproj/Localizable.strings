@@ -124,7 +124,7 @@
 "Website.richTitle" = "Madaling ayusin ang teksto";
 "Website.richBody" = "Mga pamagat, listahang may maraming antas at Markdown shortcut para ayusin ang mga ideya.";
 "Website.imagesTitle" = "Mga salita at larawan";
-"Website.imagesBody" = "Mag-paste o mag-drag ng mga larawan sa tala. Mananatili ang ayos ng teksto at larawan kapag na-save.";
+"Website.imagesBody" = "Mag-paste o mag-drag ng larawan. Nananatili ang ayos ng teksto at larawan kapag na-save.";
 "Website.draftTitle" = "Magpatuloy kung saan huminto";
 "Website.draftBody" = "Babalik ang mga draft matapos mag-restart, kasama ang teksto, format at orihinal na mga larawan.";
 "Website.pinTitle" = "Laging malapit";
@@ -145,6 +145,6 @@
 "Website.faqLanguages" = "May bersyon ba sa wika ko?";
 "Website.faqLanguagesBody" = "Sinusuportahan ng NotesMate ang 15 wika at sinusunod ang gustong wika sa macOS. May 15 wika rin ang website; pumili sa menu sa itaas.";
 "Website.closingTitle" = "Bawas palipat-lipat. Dagdag pag-iisip.";
-"Website.footer" = "Para sa Mac. Para sa iyong mga ideya.";
+"Website.footer" = "Munting window. Para sa susunod mong malaking ideya.";
 "Website.release" = "Mga tala sa release";
 "Website.feedback" = "Magbigay ng puna";

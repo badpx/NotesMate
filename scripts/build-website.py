@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Build the static product site using the app's 15 localization catalogs."""
 import argparse
+import hashlib
 import html
 import json
 import re
@@ -66,8 +67,10 @@ def build(output, base, site_url, release_file):
     if output.exists():
         shutil.rmtree(output)
     (output / "assets").mkdir(parents=True)
+    asset_versions = {}
     for name in ("style.css", "site.js"):
         shutil.copyfile(ROOT / "website" / name, output / "assets" / name)
+        asset_versions[name] = hashlib.sha256((output / "assets" / name).read_bytes()).hexdigest()[:12]
     for destination, source in {
         "note.svg": "NotesMate/Resources/AppIcon.icon/Assets/note.svg",
         "favicon.png": "NotesMate/Resources/Assets.xcassets/AppIcon.appiconset/icon_32x32@2x.png",
@@ -88,6 +91,7 @@ def build(output, base, site_url, release_file):
             "_canonical": site_url + suffix(language), "_site_url": site_url,
             "_download": download, "_release": release["html_url"], "_version": release["tag_name"],
             "_preview_language": "zh" if language.startswith("zh") else "en",
+            "_style_version": asset_versions["style.css"], "_script_version": asset_versions["site.js"],
         })
         raw = {
             "_alternates": "\n  ".join(

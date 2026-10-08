@@ -124,9 +124,9 @@
 "Website.richTitle" = "Du texte enrichi, simplement";
 "Website.richBody" = "Titres, listes à plusieurs niveaux et raccourcis Markdown pour structurer vos pensées.";
 "Website.imagesTitle" = "Les mots et les images";
-"Website.imagesBody" = "Collez ou glissez des images dans votre note. Texte et images conservent leur ordre à l’enregistrement.";
+"Website.imagesBody" = "Collez ou glissez des images. Texte et images gardent leur ordre à l’enregistrement.";
 "Website.draftTitle" = "Reprenez où vous en étiez";
-"Website.draftBody" = "Les brouillons non enregistrés reviennent après un redémarrage, avec texte, mise en forme et images originales.";
+"Website.draftBody" = "Retrouvez vos brouillons après un redémarrage : texte, mise en forme et images originales.";
 "Website.pinTitle" = "Toujours à portée de main";
 "Website.pinBody" = "Épinglez la fenêtre pendant votre travail. NotesMate mémorise aussi sa position.";
 "Website.shortcutsEyebrow" = "GARDEZ LES MAINS SUR LE CLAVIER";
@@ -145,6 +145,6 @@
 "Website.faqLanguages" = "Ma langue est-elle disponible ?";
 "Website.faqLanguagesBody" = "NotesMate prend en charge 15 langues et suit la langue préférée de macOS. Le site propose aussi ces 15 langues, à choisir dans le menu en haut.";
 "Website.closingTitle" = "Moins de changements. Plus d’idées.";
-"Website.footer" = "Pour votre Mac. Pour vos idées.";
+"Website.footer" = "Une petite fenêtre. Pour votre prochaine grande idée.";
 "Website.release" = "Notes de version";
 "Website.feedback" = "Vos retours";

@@ -384,6 +384,7 @@ a:focus-visible,button:focus-visible,select:focus-visible,summary:focus-visible 
 }
 
 .status-icon {
+  position:relative;
   width:26px;
   height:28px;
   background:#d9d9ce;
@@ -400,15 +401,25 @@ a:focus-visible,button:focus-visible,select:focus-visible,summary:focus-visible 
   height:16px;
 }
 
-.menu-anchor {
+.menu-bar>.menu-battery {
+  width:25px;
+  height:15px;
+}
+
+.menu-time {
+  font-variant-numeric:tabular-nums;
+}
+
+.status-icon::after {
+  content:"";
   position:absolute;
-  right:126px;
-  top:80px;
+  left:50%;
+  top:calc(100% + 10px);
   width:9px;
   height:9px;
   border-top:1px dashed #a6a492;
   border-left:1px dashed #a6a492;
-  transform:rotate(45deg);
+  transform:translateX(-50%) rotate(45deg);
   z-index:1;
 }
 
@@ -603,8 +614,8 @@ h2 {
 
 .features-layout {
   display:grid;
-  grid-template-columns:1fr 1.08fr;
-  gap:100px;
+  grid-template-columns:minmax(0,.7fr) minmax(0,1.3fr);
+  gap:72px;
   padding-block:80px;
 }
 
@@ -695,7 +706,6 @@ h2 {
 
 .feature-list p {
   font-size:14px;
-  max-width:405px;
 }
 
 .shortcuts {
@@ -805,9 +815,9 @@ h2 {
 .closing {
   position:relative;
   overflow:hidden;
-  border:1px solid #3a3b3c;
-  background:#28292a;
-  color:#f8f7ee;
+  border:1px solid #e8dfb8;
+  background:#fff7d6;
+  color:var(--ink);
   border-radius:20px;
   text-align:center;
 }
@@ -821,7 +831,7 @@ h2 {
 .closing-icon {
   border:1px solid #ffec80;
   margin-bottom:10px;
-  box-shadow:0 6px 18px #00000040;
+  box-shadow:0 5px 14px #86631b24;
 }
 
 .closing-icon img {
@@ -830,7 +840,7 @@ h2 {
 }
 
 .closing .eyebrow {
-  color:#c4c3b8;
+  color:#706341;
   font-size:10px;
   letter-spacing:1.5px;
   margin-bottom:15px;
@@ -843,12 +853,12 @@ h2 {
 }
 
 .closing .button:focus-visible {
-  outline-color:#f8f7ee;
+  outline-color:#976300;
 }
 
 .closing-meta {
   font-size:11px;
-  color:#c4c3b8;
+  color:#706341;
   margin-top:19px;
 }
 
@@ -862,7 +872,7 @@ h2 {
   bottom:-120px;
   font-size:430px;
   line-height:1;
-  color:#3a3b34;
+  color:#f0e6b9;
   transform:rotate(15deg);
   font-family:Georgia,serif;
 }
@@ -1007,9 +1017,6 @@ html[lang=vi] .hero h1 {
   }
   .visual-backdrop {
     inset:35px -13px 70px 20px;
-  }
-  .menu-anchor {
-    top:45px;
   }
   .workflow {
     padding-top:44px;
@@ -1157,10 +1164,6 @@ html[lang=vi] .hero h1 {
   .status-icon {
     width:23px;
     height:24px;
-  }
-  .menu-anchor {
-    top:37px;
-    right:102px;
   }
   .editor-window {
     border-radius:8px;
