@@ -1,0 +1,109 @@
+<!doctype html>
+<html lang="{{ _lang }}">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#faf9f5">
+  <title>{{ Website.title }}</title>
+  <meta name="description" content="{{ Website.description }}">
+  <link rel="canonical" href="{{ _canonical }}">
+  {{ _alternates }}
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="{{ Website.title }}">
+  <meta property="og:description" content="{{ Website.description }}">
+  <meta property="og:url" content="{{ _canonical }}">
+  <meta property="og:image" content="{{ _site_url }}/assets/preview-light-en.png">
+  <meta property="og:image:width" content="1706">
+  <meta property="og:image:height" content="922">
+  <meta name="twitter:card" content="summary_large_image">
+  <link rel="icon" type="image/png" href="{{ _base }}/assets/favicon.png">
+  <link rel="stylesheet" href="{{ _base }}/assets/style.css">
+  <script src="{{ _base }}/assets/site.js" defer></script>
+</head>
+<body data-base="{{ _base }}">
+  <a class="skip-link" href="#main">{{ Website.skip }}</a>
+  <svg class="svg-defs" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><defs>
+    <symbol id="arrow" viewBox="0 0 24 24"><path d="M5 12h14m-6-6 6 6-6 6"/></symbol>
+    <symbol id="download" viewBox="0 0 24 24"><path d="M12 3v12m-5-5 5 5 5-5M5 16v4h14v-4"/></symbol>
+    <symbol id="sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M2 12h2m16 0h2M5 5l1.5 1.5m11 11L19 19M5 19l1.5-1.5m11-11L19 5"/></symbol>
+    <symbol id="moon" viewBox="0 0 24 24"><path d="M20 15.5A9 9 0 0 1 8.5 4a9 9 0 1 0 11.5 11.5Z"/></symbol>
+    <symbol id="image" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="3"/><circle cx="8" cy="9" r="1.5"/><path d="m4 18 5-5 4 4 4-7 4 7"/></symbol>
+    <symbol id="draft" viewBox="0 0 24 24"><path d="M15 3H5v18h14V7l-4-4Zm-1 0v5h5M8 12h8m-8 4h5"/></symbol>
+    <symbol id="pin" viewBox="0 0 24 24"><path d="m8 3 8 0-2 7 4 4v2H6v-2l4-4-2-7Zm4 13v6"/></symbol>
+    <symbol id="globe" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><ellipse cx="12" cy="12" rx="4" ry="9"/><path d="M3 12h18"/></symbol>
+    <symbol id="github" viewBox="0 0 24 24"><path d="M9 20c-5 1-5-2-7-2m14 4v-4a3.5 3.5 0 0 0-1-2.5c3.3-.4 6.7-1.6 6.7-7.4A5.7 5.7 0 0 0 20.2 4a5.3 5.3 0 0 0-.1-4s-1.2-.4-4.1 1.5a14.3 14.3 0 0 0-7.4 0C5.7-.4 4.5 0 4.5 0a5.3 5.3 0 0 0-.1 4A5.7 5.7 0 0 0 3 8.1c0 5.8 3.4 7 6.7 7.4A3.5 3.5 0 0 0 8.7 18v4" transform="translate(2 3) scale(.8)"/></symbol>
+  </defs></svg>
+
+  <header class="site-header wrap">
+    <a class="brand" href="{{ _home }}" aria-label="NotesMate">
+      <span class="app-icon"><img src="{{ _base }}/assets/note.svg" width="40" height="40" alt=""></span>
+      <span>NotesMate<span class="brand-period">.</span></span>
+    </a>
+    <nav class="main-nav" aria-label="{{ Website.navigation }}">
+      <a href="#features">{{ Website.features }}</a>
+      <a href="#how-it-works">{{ Website.how }}</a>
+      <a class="github-link" href="https://github.com/badpx/NotesMate"><svg><use href="#github"/></svg><span>GitHub</span></a>
+    </nav>
+    <label class="language-picker"><svg aria-hidden="true"><use href="#globe"/></svg><span class="sr-only">{{ Website.language }}</span><select id="language">{{ _languages }}</select></label>
+  </header>
+
+  <main id="main">
+    <section class="hero wrap">
+      <div class="hero-copy">
+        <div class="eyebrow"><span class="status-dot"></span>{{ Website.eyebrow }}</div>
+        <h1><span>{{ Website.hero1 }}</span><span>{{ Website.hero2 }}</span><span class="highlight">{{ Website.hero3 }}</span></h1>
+        <p class="hero-description">{{ Website.description }}</p>
+        <a class="button button-primary" href="{{ _download }}"><svg aria-hidden="true"><use href="#download"/></svg>{{ Website.download }}<svg class="button-arrow" aria-hidden="true"><use href="#arrow"/></svg></a>
+        <div class="download-meta"><span>{{ Website.requirements }}</span><a href="{{ _release }}">{{ _version }} <span aria-hidden="true">↗</span></a></div>
+      </div>
+      <div class="hero-visual">
+        <div class="visual-backdrop" aria-hidden="true"><span class="backdrop-word">Aa</span><span class="backdrop-lines"></span></div>
+        <div class="menu-bar" aria-hidden="true"><span class="menu-dots">•••</span><span class="menu-bar-line"></span><span class="status-icon"><img src="{{ _base }}/assets/note.svg" alt="" width="24" height="24"></span><svg><use href="#sun"/></svg><span>9:41</span></div>
+        <div class="menu-anchor" aria-hidden="true"></div>
+        <div class="editor-window" id="editor-preview">
+          <img class="preview-image preview-light" src="{{ _base }}/assets/preview-light-{{ _preview_language }}.png" width="1706" height="922" alt="{{ Website.previewAlt }}" fetchpriority="high">
+          <img class="preview-image preview-dark" src="{{ _base }}/assets/preview-dark-{{ _preview_language }}.png" width="1706" height="922" alt="" loading="lazy" aria-hidden="true">
+        </div>
+        <div class="shortcut-sticker"><span class="shortcut-keys"><kbd>⌃</kbd><kbd>⌘</kbd><kbd>N</kbd></span><span>{{ Website.shortcutCaption }}</span><svg aria-hidden="true"><use href="#arrow"/></svg></div>
+        <div class="preview-controls"><span>{{ Website.preview }}</span><div class="theme-controls" role="group" aria-label="{{ Website.preview }}"><button type="button" data-theme="light" aria-pressed="true"><svg aria-hidden="true"><use href="#sun"/></svg>{{ Website.light }}</button><button type="button" data-theme="dark" aria-pressed="false"><svg aria-hidden="true"><use href="#moon"/></svg>{{ Website.dark }}</button></div></div>
+      </div>
+    </section>
+
+    <section class="workflow wrap" id="how-it-works">
+      <div class="section-heading"><p class="eyebrow">{{ Website.workflowEyebrow }}</p><h2>{{ Website.workflowTitle }}</h2></div>
+      <ol class="steps">
+        <li><div class="step-top"><span class="step-number">01</span><span class="step-keys"><kbd>⌃</kbd><kbd>⌘</kbd><kbd>N</kbd></span></div><h3>{{ Website.openTitle }}</h3><p>{{ Website.openBody }}</p></li>
+        <li><div class="step-top"><span class="step-number">02</span><span class="writing-mark" aria-hidden="true">Aa<span>|</span></span></div><h3>{{ Website.writeTitle }}</h3><p>{{ Website.writeBody }}</p></li>
+        <li><div class="step-top"><span class="step-number">03</span><span class="step-keys"><kbd>⌘</kbd><kbd>↵</kbd></span></div><h3>{{ Website.saveTitle }}</h3><p>{{ Website.saveBody }}</p></li>
+      </ol>
+    </section>
+
+    <section class="features-section" id="features"><div class="features-layout wrap">
+      <div class="feature-intro"><p class="eyebrow">{{ Website.features }}</p><h2>{{ Website.featureTitle1 }}<br><span>{{ Website.featureTitle2 }}</span></h2><p>{{ Website.featureIntro }}</p><div class="format-sample" aria-hidden="true"><span>#</span><span>Aa</span><span>≡</span><svg><use href="#image"/></svg><span class="sample-save">↵</span></div></div>
+      <div class="feature-list">
+        <article><span class="feature-icon text-icon" aria-hidden="true">Aa</span><div><h3>{{ Website.richTitle }}</h3><p>{{ Website.richBody }}</p></div></article>
+        <article><span class="feature-icon"><svg aria-hidden="true"><use href="#image"/></svg></span><div><h3>{{ Website.imagesTitle }}</h3><p>{{ Website.imagesBody }}</p></div></article>
+        <article><span class="feature-icon"><svg aria-hidden="true"><use href="#draft"/></svg></span><div><h3>{{ Website.draftTitle }}</h3><p>{{ Website.draftBody }}</p></div></article>
+        <article><span class="feature-icon"><svg aria-hidden="true"><use href="#pin"/></svg></span><div><h3>{{ Website.pinTitle }}</h3><p>{{ Website.pinBody }}</p></div></article>
+      </div>
+    </div></section>
+
+    <section class="shortcuts wrap"><div><p class="eyebrow">{{ Website.shortcutsEyebrow }}</p><h2>{{ Website.shortcutsTitle }}</h2></div><dl class="shortcut-list">
+      <div><dt>{{ Website.shortcutOpen }}</dt><dd><kbd>⌃</kbd><kbd>⌘</kbd><kbd>N</kbd></dd></div>
+      <div><dt>{{ Website.shortcutSave }}</dt><dd><kbd>⌘</kbd><kbd>↵</kbd></dd></div>
+      <div><dt>{{ Website.shortcutNotes }}</dt><dd><kbd>⌃</kbd><kbd>⌘</kbd><kbd>O</kbd></dd></div>
+      <div><dt>{{ Website.shortcutSelect }}<span>{{ Website.shortcutSelectHint }}</span></dt><dd><kbd>⌘</kbd><kbd>A</kbd></dd></div>
+    </dl></section>
+
+    <section class="faq wrap" id="faq"><div class="section-heading"><p class="eyebrow">{{ Website.faqEyebrow }}</p><h2>{{ Website.faqTitle }}</h2></div><div class="faq-list">
+      <details><summary>{{ Website.faqInstall }}</summary><p>{{ Website.faqInstallBody }}</p></details>
+      <details><summary>{{ Website.faqPermission }}</summary><p>{{ Website.faqPermissionBody }}</p></details>
+      <details><summary>{{ Website.faqLanguages }}</summary><p>{{ Website.faqLanguagesBody }}</p></details>
+    </div></section>
+
+    <section class="closing wrap"><div class="closing-inner"><span class="app-icon closing-icon"><img src="{{ _base }}/assets/note.svg" width="72" height="72" alt=""></span><p class="eyebrow">NotesMate</p><h2>{{ Website.closingTitle }}</h2><a class="button button-dark" href="{{ _download }}"><svg aria-hidden="true"><use href="#download"/></svg>{{ Website.download }}</a><p class="closing-meta">{{ Website.requirements }} <span aria-hidden="true">/</span> {{ _version }}</p></div><span class="closing-doodle" aria-hidden="true">✳</span></section>
+  </main>
+
+  <footer class="site-footer wrap"><a class="footer-brand" href="{{ _home }}">NotesMate<span>.</span></a><p>{{ Website.footer }}</p><div><a href="{{ _release }}">{{ Website.release }}</a><a href="https://github.com/badpx/NotesMate/issues">{{ Website.feedback }}</a><a href="https://github.com/badpx/NotesMate#license">MIT</a></div></footer>
+</body>
+</html>

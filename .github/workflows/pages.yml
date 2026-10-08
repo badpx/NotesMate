@@ -1,0 +1,58 @@
+name: Deploy product website
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'website/**'
+      - 'scripts/build-website.py'
+      - 'NotesMate/Localization/**'
+      - 'NotesMate/Editor/EditorLanguage.swift'
+      - 'NotesMate/Resources/**'
+      - 'docs/design/**'
+      - '.github/workflows/pages.yml'
+  release:
+    types: [published, edited, released, unpublished, deleted]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: github-pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pages: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # Release events refer to the app's tag; the website comes from main.
+          ref: main
+      - uses: actions/configure-pages@v5
+      - name: Resolve the latest public release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh api "repos/$GITHUB_REPOSITORY/releases/latest" > "$RUNNER_TEMP/release.json"
+      - name: Build all 15 languages
+        run: python3 scripts/build-website.py --release-json "$RUNNER_TEMP/release.json"
+      - uses: actions/upload-pages-artifact@v4
+        with:
+          path: build/website
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Publish website
+        id: deployment
+        uses: actions/deploy-pages@v4

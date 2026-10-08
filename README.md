@@ -4,6 +4,8 @@
 
 A lightweight macOS menu bar app for quickly jotting down notes and saving them to Apple Notes with one click.
 
+[产品官网 / Website](https://badpx.github.io/NotesMate/) · [下载 / Download](https://github.com/badpx/NotesMate/releases/latest)
+
 ![NotesMate 输入窗口](docs/design/main-window-v3.png)
 
 ## 功能

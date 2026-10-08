@@ -1,0 +1,10 @@
+{
+  "tag_name": "v1.3",
+  "html_url": "https://github.com/badpx/NotesMate/releases/tag/v1.3",
+  "draft": false,
+  "prerelease": false,
+  "assets": [{
+    "name": "NotesMate-v1.3-macos.dmg",
+    "browser_download_url": "https://github.com/badpx/NotesMate/releases/download/v1.3/NotesMate-v1.3-macos.dmg"
+  }]
+}
