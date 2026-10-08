@@ -107,7 +107,6 @@
 "Website.download" = "Scarica per macOS";
 "Website.requirements" = "macOS 13+ · Gratis e open source";
 "Website.previewAlt" = "Design dell’editor NotesMate con titolo, testo ed elenco puntato.";
-"Website.shortcutCaption" = "Sempre a una scorciatoia da te.";
 "Website.preview" = "Anteprima del design";
 "Website.light" = "Chiaro";
 "Website.dark" = "Scuro";
@@ -123,7 +122,7 @@
 "Website.featureTitle2" = "Tante possibilità.";
 "Website.featureIntro" = "I piccoli dettagli che rendono naturale prendere appunti.";
 "Website.richTitle" = "Testo formattato, senza fatica";
-"Website.richBody" = "Titoli, elenchi a otto livelli e scorciatoie Markdown per dare ordine ai pensieri.";
+"Website.richBody" = "Titoli, elenchi a più livelli e scorciatoie Markdown per dare ordine ai pensieri.";
 "Website.imagesTitle" = "Parole e immagini insieme";
 "Website.imagesBody" = "Incolla o trascina immagini nella nota. Testo e immagini mantengono il loro ordine al salvataggio.";
 "Website.draftTitle" = "Riprendi da dove eri";

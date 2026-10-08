@@ -107,7 +107,6 @@
 "Website.download" = "下載 macOS 版";
 "Website.requirements" = "macOS 13+ · 免費開放原始碼";
 "Website.previewAlt" = "NotesMate 編輯器設計稿，顯示標題、內文和項目列表。";
-"Website.shortcutCaption" = "一個快捷鍵，靈感不掉線。";
 "Website.preview" = "設計預覽";
 "Website.light" = "淺色";
 "Website.dark" = "深色";
@@ -123,7 +122,7 @@
 "Website.featureTitle2" = "裝得下豐富想法。";
 "Website.featureIntro" = "讓隨手記錄更自然的細節，都已備好。";
 "Website.richTitle" = "輕鬆寫出層次";
-"Website.richBody" = "標題、八層列表和 Markdown 輸入捷徑，讓零散想法井然有序。";
+"Website.richBody" = "標題、多層列表和 Markdown 輸入捷徑，讓零散想法井然有序。";
 "Website.imagesTitle" = "圖文，一起記下";
 "Website.imagesBody" = "直接貼上或拖入圖片，儲存時保持文字與圖片的原始順序。";
 "Website.draftTitle" = "接著上次，繼續寫";

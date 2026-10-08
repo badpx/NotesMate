@@ -107,7 +107,6 @@
 "Website.download" = "Tải về cho macOS";
 "Website.requirements" = "macOS 13+ · Miễn phí & mã nguồn mở";
 "Website.previewAlt" = "Thiết kế trình soạn thảo NotesMate với tiêu đề, văn bản và danh sách dấu đầu dòng.";
-"Website.shortcutCaption" = "Chỉ cách một phím tắt.";
 "Website.preview" = "Xem trước thiết kế";
 "Website.light" = "Sáng";
 "Website.dark" = "Tối";
@@ -123,7 +122,7 @@
 "Website.featureTitle2" = "Nhiều khả năng.";
 "Website.featureIntro" = "Những chi tiết nhỏ giúp việc ghi chép trở nên tự nhiên.";
 "Website.richTitle" = "Định dạng văn bản dễ dàng";
-"Website.richBody" = "Tiêu đề, danh sách tám cấp và phím tắt Markdown giúp sắp xếp suy nghĩ.";
+"Website.richBody" = "Tiêu đề, danh sách nhiều cấp và phím tắt Markdown giúp sắp xếp suy nghĩ.";
 "Website.imagesTitle" = "Chữ và hình cùng nhau";
 "Website.imagesBody" = "Dán hoặc kéo hình ảnh vào ghi chú. Văn bản và hình ảnh giữ nguyên thứ tự khi lưu.";
 "Website.draftTitle" = "Viết tiếp từ chỗ dừng";

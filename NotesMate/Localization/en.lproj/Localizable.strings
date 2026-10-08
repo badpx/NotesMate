@@ -107,7 +107,6 @@
 "Website.download" = "Download for macOS";
 "Website.requirements" = "macOS 13+ · Free & open source";
 "Website.previewAlt" = "NotesMate editor design showing a heading, text and a bulleted list.";
-"Website.shortcutCaption" = "Always a shortcut away.";
 "Website.preview" = "Design preview";
 "Website.light" = "Light";
 "Website.dark" = "Dark";
@@ -123,7 +122,7 @@
 "Website.featureTitle2" = "Plenty of possibilities.";
 "Website.featureIntro" = "All the little things that make jotting things down feel natural.";
 "Website.richTitle" = "Rich text, without the fuss";
-"Website.richBody" = "Headings, eight-level lists and Markdown shortcuts. Give thoughts a little structure.";
+"Website.richBody" = "Headings, multilevel lists and Markdown shortcuts. Give thoughts a little structure.";
 "Website.imagesTitle" = "Words meet images";
 "Website.imagesBody" = "Paste or drag images into your note. Save text and pictures in their original order.";
 "Website.draftTitle" = "Pick up where you left off";

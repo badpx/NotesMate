@@ -107,7 +107,6 @@
 "Website.download" = "macOS용 다운로드";
 "Website.requirements" = "macOS 13 이상 · 무료 오픈 소스";
 "Website.previewAlt" = "제목, 본문, 글머리 기호 목록이 표시된 NotesMate 편집기 디자인.";
-"Website.shortcutCaption" = "단축키 하나면 바로 곁에.";
 "Website.preview" = "디자인 미리보기";
 "Website.light" = "라이트";
 "Website.dark" = "다크";
@@ -123,7 +122,7 @@
 "Website.featureTitle2" = "풍부한 가능성을.";
 "Website.featureIntro" = "자연스럽게 기록하도록 돕는 작은 기능들을 갖췄습니다.";
 "Website.richTitle" = "간편하게 꾸미는 글";
-"Website.richBody" = "제목, 8단계 목록, Markdown 입력 단축 문법으로 생각을 정리하세요.";
+"Website.richBody" = "제목, 다단계 목록, Markdown 입력 단축 문법으로 생각을 정리하세요.";
 "Website.imagesTitle" = "글과 이미지를 함께";
 "Website.imagesBody" = "메모에 이미지를 붙여넣거나 끌어다 놓으세요. 글과 그림의 순서를 유지해 저장합니다.";
 "Website.draftTitle" = "이어서 쓰기";

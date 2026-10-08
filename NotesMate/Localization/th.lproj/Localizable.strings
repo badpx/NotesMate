@@ -107,7 +107,6 @@
 "Website.download" = "ดาวน์โหลดสำหรับ macOS";
 "Website.requirements" = "macOS 13 ขึ้นไป · ฟรีและโอเพนซอร์ส";
 "Website.previewAlt" = "แบบดีไซน์ตัวแก้ไข NotesMate ที่แสดงหัวข้อ ข้อความ และรายการหัวข้อย่อย";
-"Website.shortcutCaption" = "อยู่ใกล้แค่ปุ่มลัดเดียว";
 "Website.preview" = "ตัวอย่างดีไซน์";
 "Website.light" = "สว่าง";
 "Website.dark" = "มืด";
@@ -123,7 +122,7 @@
 "Website.featureTitle2" = "ความเป็นไปได้มากมาย";
 "Website.featureIntro" = "รายละเอียดเล็กๆ ที่ทำให้การจดบันทึกเป็นเรื่องธรรมชาติ";
 "Website.richTitle" = "จัดรูปแบบข้อความได้ง่าย";
-"Website.richBody" = "หัวข้อ รายการซ้อนกันได้แปดระดับ และทางลัด Markdown ช่วยจัดระเบียบความคิด";
+"Website.richBody" = "หัวข้อ รายการหลายระดับ และทางลัด Markdown ช่วยจัดระเบียบความคิด";
 "Website.imagesTitle" = "ข้อความคู่กับรูปภาพ";
 "Website.imagesBody" = "วางหรือลากรูปภาพลงในโน้ต ข้อความและรูปภาพจะคงลำดับเดิมเมื่อบันทึก";
 "Website.draftTitle" = "เขียนต่อจากที่ค้างไว้";

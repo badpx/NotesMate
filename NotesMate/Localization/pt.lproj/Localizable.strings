@@ -107,7 +107,6 @@
 "Website.download" = "Baixar para macOS";
 "Website.requirements" = "macOS 13+ · Grátis e de código aberto";
 "Website.previewAlt" = "Design do editor NotesMate com título, texto e lista com marcadores.";
-"Website.shortcutCaption" = "Sempre a um atalho de distância.";
 "Website.preview" = "Prévia do design";
 "Website.light" = "Claro";
 "Website.dark" = "Escuro";
@@ -123,7 +122,7 @@
 "Website.featureTitle2" = "Muitas possibilidades.";
 "Website.featureIntro" = "Pequenos detalhes que tornam natural o ato de anotar.";
 "Website.richTitle" = "Texto formatado, sem esforço";
-"Website.richBody" = "Títulos, listas com oito níveis e atalhos Markdown para organizar suas ideias.";
+"Website.richBody" = "Títulos, listas com vários níveis e atalhos Markdown para organizar suas ideias.";
 "Website.imagesTitle" = "Palavras e imagens juntas";
 "Website.imagesBody" = "Cole ou arraste imagens para a nota. Textos e imagens mantêm a ordem ao salvar.";
 "Website.draftTitle" = "Continue de onde parou";

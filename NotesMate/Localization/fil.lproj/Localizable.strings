@@ -107,7 +107,6 @@
 "Website.download" = "I-download para sa macOS";
 "Website.requirements" = "macOS 13+ · Libre at open source";
 "Website.previewAlt" = "Disenyo ng NotesMate editor na may pamagat, teksto at listahang may bullet.";
-"Website.shortcutCaption" = "Isang shortcut lang ang layo.";
 "Website.preview" = "Preview ng disenyo";
 "Website.light" = "Maliwanag";
 "Website.dark" = "Madilim";
@@ -123,7 +122,7 @@
 "Website.featureTitle2" = "Maraming posibilidad.";
 "Website.featureIntro" = "Maliliit na detalyeng nagpapadali sa pagsusulat ng mga tala.";
 "Website.richTitle" = "Madaling ayusin ang teksto";
-"Website.richBody" = "Mga pamagat, listahang may walong antas at Markdown shortcut para ayusin ang mga ideya.";
+"Website.richBody" = "Mga pamagat, listahang may maraming antas at Markdown shortcut para ayusin ang mga ideya.";
 "Website.imagesTitle" = "Mga salita at larawan";
 "Website.imagesBody" = "Mag-paste o mag-drag ng mga larawan sa tala. Mananatili ang ayos ng teksto at larawan kapag na-save.";
 "Website.draftTitle" = "Magpatuloy kung saan huminto";

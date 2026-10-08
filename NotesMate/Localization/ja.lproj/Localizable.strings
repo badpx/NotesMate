@@ -107,7 +107,6 @@
 "Website.download" = "macOS版をダウンロード";
 "Website.requirements" = "macOS 13以降 · 無料・オープンソース";
 "Website.previewAlt" = "見出し、本文、箇条書きを表示したNotesMateエディタのデザイン。";
-"Website.shortcutCaption" = "ショートカットで、すぐそばに。";
 "Website.preview" = "デザインプレビュー";
 "Website.light" = "ライト";
 "Website.dark" = "ダーク";
@@ -123,7 +122,7 @@
 "Website.featureTitle2" = "広がる可能性。";
 "Website.featureIntro" = "思いついたことを自然に書き留めるための、ちょっとした工夫。";
 "Website.richTitle" = "手軽に整える文章";
-"Website.richBody" = "見出し、8階層のリスト、Markdown入力ショートカットで、考えを整理。";
+"Website.richBody" = "見出し、階層付きリスト、Markdown入力ショートカットで、考えを整理。";
 "Website.imagesTitle" = "文章と画像を一緒に";
 "Website.imagesBody" = "画像を貼り付けたりドラッグしたりするだけ。文章と画像の順序を保って保存します。";
 "Website.draftTitle" = "前回の続きから";

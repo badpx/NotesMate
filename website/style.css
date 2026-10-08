@@ -291,6 +291,7 @@ a:focus-visible,button:focus-visible,select:focus-visible,summary:focus-visible 
 
 .button-primary {
   background:var(--yellow);
+  color:var(--ink);
   box-shadow:0 3px 0 #dcb625;
 }
 
@@ -443,29 +444,7 @@ a:focus-visible,button:focus-visible,select:focus-visible,summary:focus-visible 
   opacity:0;
 }
 
-.shortcut-sticker {
-  position:absolute;
-  bottom:56px;
-  left:-22px;
-  display:flex;
-  align-items:center;
-  gap:14px;
-  background:#fffefb;
-  box-shadow:0 6px 20px #38382b12;
-  border:1px solid #e6e5da;
-  border-radius:10px;
-  padding:12px 15px;
-  font-size:11px;
-  color:#64645b;
-  transform:rotate(-3deg);
-}
-
-.shortcut-sticker>svg {
-  width:17px;
-  transform:rotate(-35deg);
-}
-
-.shortcut-keys,.step-keys,dd {
+.step-keys,dd {
   display:inline-flex;
   gap:5px;
 }
@@ -826,8 +805,9 @@ h2 {
 .closing {
   position:relative;
   overflow:hidden;
-  border:1px solid #e8ce40;
-  background:#f9db54;
+  border:1px solid #3a3b3c;
+  background:#28292a;
+  color:#f8f7ee;
   border-radius:20px;
   text-align:center;
 }
@@ -841,7 +821,7 @@ h2 {
 .closing-icon {
   border:1px solid #ffec80;
   margin-bottom:10px;
-  box-shadow:0 4px 8px #9c7b1922;
+  box-shadow:0 6px 18px #00000040;
 }
 
 .closing-icon img {
@@ -850,7 +830,7 @@ h2 {
 }
 
 .closing .eyebrow {
-  color:#695b2d;
+  color:#c4c3b8;
   font-size:10px;
   letter-spacing:1.5px;
   margin-bottom:15px;
@@ -862,19 +842,13 @@ h2 {
   letter-spacing:-1.8px;
 }
 
-.button-dark {
-  background:#282821;
-  color:#fffef5;
-  box-shadow:0 3px 0 #15150f;
-}
-
-.button-dark:hover {
-  background:#444438;
+.closing .button:focus-visible {
+  outline-color:#f8f7ee;
 }
 
 .closing-meta {
   font-size:11px;
-  color:#6f602e;
+  color:#c4c3b8;
   margin-top:19px;
 }
 
@@ -888,7 +862,7 @@ h2 {
   bottom:-120px;
   font-size:430px;
   line-height:1;
-  color:#f2cb35;
+  color:#3a3b34;
   transform:rotate(15deg);
   font-family:Georgia,serif;
 }
@@ -974,11 +948,6 @@ html[lang=vi] .hero h1 {
   .features-layout,.shortcuts {
     gap:60px;
   }
-  .shortcut-sticker {
-    left:-10px;
-    font-size:10px;
-    gap:9px;
-  }
   .main-nav {
     gap:23px;
   }
@@ -1041,9 +1010,6 @@ html[lang=vi] .hero h1 {
   }
   .menu-anchor {
     top:45px;
-  }
-  .shortcut-sticker {
-    left:-10px;
   }
   .workflow {
     padding-top:44px;
@@ -1198,21 +1164,6 @@ html[lang=vi] .hero h1 {
   }
   .editor-window {
     border-radius:8px;
-  }
-  .shortcut-sticker {
-    bottom:57px;
-    left:-7px;
-    gap:9px;
-    padding:9px 11px;
-    font-size:9px;
-  }
-  .shortcut-sticker kbd {
-    min-width:24px;
-    height:26px;
-    font-size:12px;
-  }
-  .shortcut-sticker>svg {
-    display:none;
   }
   .preview-controls {
     font-size:9px;
@@ -1389,4 +1340,3 @@ html[lang=vi] .hero h1 {
     animation:none!important;
   }
 }
-

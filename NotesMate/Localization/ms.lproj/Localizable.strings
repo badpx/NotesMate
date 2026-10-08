@@ -107,7 +107,6 @@
 "Website.download" = "Muat turun untuk macOS";
 "Website.requirements" = "macOS 13+ · Percuma & sumber terbuka";
 "Website.previewAlt" = "Reka bentuk editor NotesMate dengan tajuk, teks dan senarai berbulet.";
-"Website.shortcutCaption" = "Hanya satu pintasan sahaja.";
 "Website.preview" = "Pratonton reka bentuk";
 "Website.light" = "Cerah";
 "Website.dark" = "Gelap";
@@ -123,7 +122,7 @@
 "Website.featureTitle2" = "Banyak kemungkinan.";
 "Website.featureIntro" = "Butiran kecil yang menjadikan catatan terasa semula jadi.";
 "Website.richTitle" = "Format teks dengan mudah";
-"Website.richBody" = "Tajuk, senarai lapan aras dan pintasan Markdown untuk menyusun idea.";
+"Website.richBody" = "Tajuk, senarai berbilang aras dan pintasan Markdown untuk menyusun idea.";
 "Website.imagesTitle" = "Teks bersama imej";
 "Website.imagesBody" = "Tampal atau seret imej ke dalam nota. Susunan teks dan imej dikekalkan apabila disimpan.";
 "Website.draftTitle" = "Sambung dari tempat terakhir";

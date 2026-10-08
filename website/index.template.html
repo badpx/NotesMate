@@ -64,7 +64,6 @@
           <img class="preview-image preview-light" src="{{ _base }}/assets/preview-light-{{ _preview_language }}.png" width="1706" height="922" alt="{{ Website.previewAlt }}" fetchpriority="high">
           <img class="preview-image preview-dark" src="{{ _base }}/assets/preview-dark-{{ _preview_language }}.png" width="1706" height="922" alt="" loading="lazy" aria-hidden="true">
         </div>
-        <div class="shortcut-sticker"><span class="shortcut-keys"><kbd>⌃</kbd><kbd>⌘</kbd><kbd>N</kbd></span><span>{{ Website.shortcutCaption }}</span><svg aria-hidden="true"><use href="#arrow"/></svg></div>
         <div class="preview-controls"><span>{{ Website.preview }}</span><div class="theme-controls" role="group" aria-label="{{ Website.preview }}"><button type="button" data-theme="light" aria-pressed="true"><svg aria-hidden="true"><use href="#sun"/></svg>{{ Website.light }}</button><button type="button" data-theme="dark" aria-pressed="false"><svg aria-hidden="true"><use href="#moon"/></svg>{{ Website.dark }}</button></div></div>
       </div>
     </section>
@@ -101,7 +100,7 @@
       <details><summary>{{ Website.faqLanguages }}</summary><p>{{ Website.faqLanguagesBody }}</p></details>
     </div></section>
 
-    <section class="closing wrap"><div class="closing-inner"><span class="app-icon closing-icon"><img src="{{ _base }}/assets/note.svg" width="72" height="72" alt=""></span><p class="eyebrow">NotesMate</p><h2>{{ Website.closingTitle }}</h2><a class="button button-dark" href="{{ _download }}"><svg aria-hidden="true"><use href="#download"/></svg>{{ Website.download }}</a><p class="closing-meta">{{ Website.requirements }} <span aria-hidden="true">/</span> {{ _version }}</p></div><span class="closing-doodle" aria-hidden="true">✳</span></section>
+    <section class="closing wrap"><div class="closing-inner"><span class="app-icon closing-icon"><img src="{{ _base }}/assets/note.svg" width="72" height="72" alt=""></span><p class="eyebrow">NotesMate</p><h2>{{ Website.closingTitle }}</h2><a class="button button-primary" href="{{ _download }}"><svg aria-hidden="true"><use href="#download"/></svg>{{ Website.download }}</a><p class="closing-meta">{{ Website.requirements }} <span aria-hidden="true">/</span> {{ _version }}</p></div><span class="closing-doodle" aria-hidden="true">✳</span></section>
   </main>
 
   <footer class="site-footer wrap"><a class="footer-brand" href="{{ _home }}">NotesMate<span>.</span></a><p>{{ Website.footer }}</p><div><a href="{{ _release }}">{{ Website.release }}</a><a href="https://github.com/badpx/NotesMate/issues">{{ Website.feedback }}</a><a href="https://github.com/badpx/NotesMate#license">MIT</a></div></footer>

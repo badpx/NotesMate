@@ -107,7 +107,6 @@
 "Website.download" = "Télécharger pour macOS";
 "Website.requirements" = "macOS 13+ · Gratuit et open source";
 "Website.previewAlt" = "Maquette de l’éditeur NotesMate avec un titre, du texte et une liste à puces.";
-"Website.shortcutCaption" = "À un raccourci de vous.";
 "Website.preview" = "Aperçu du design";
 "Website.light" = "Clair";
 "Website.dark" = "Sombre";
@@ -123,7 +122,7 @@
 "Website.featureTitle2" = "Grandes possibilités.";
 "Website.featureIntro" = "Les petits détails qui rendent la prise de notes naturelle.";
 "Website.richTitle" = "Du texte enrichi, simplement";
-"Website.richBody" = "Titres, listes à huit niveaux et raccourcis Markdown pour structurer vos pensées.";
+"Website.richBody" = "Titres, listes à plusieurs niveaux et raccourcis Markdown pour structurer vos pensées.";
 "Website.imagesTitle" = "Les mots et les images";
 "Website.imagesBody" = "Collez ou glissez des images dans votre note. Texte et images conservent leur ordre à l’enregistrement.";
 "Website.draftTitle" = "Reprenez où vous en étiez";
