@@ -169,18 +169,20 @@ struct NoteEditorView: View {
             Button(action: showBlockMenu) {
                 Text("#").font(.system(size: 16, weight: .semibold))
                     .foregroundStyle(Color(nsColor: EditorAppearance.secondary))
-                    .modifier(FormatControlHover())
+                    .frame(width: 28, height: 28)
             }
             .buttonStyle(.borderless)
+            .modifier(FormatControlHover())
             .accessibilityLabel(EditorLanguage.text("Paragraph Style"))
             .accessibilityHint(EditorLanguage.text("Paragraph Style"))
             Button(action: showInlineMenu) {
                 Text(verbatim: "Aa")
                     .font(.system(size: 13, weight: .regular))
                     .foregroundStyle(Color(nsColor: EditorAppearance.secondary))
-                    .modifier(FormatControlHover())
+                    .frame(width: 28, height: 28)
             }
             .buttonStyle(.borderless)
+            .modifier(FormatControlHover())
             .accessibilityLabel(EditorLanguage.text("Text Style"))
             .accessibilityHint(EditorLanguage.text("Text Style"))
 
@@ -189,9 +191,10 @@ struct NoteEditorView: View {
             } label: {
                 Image(systemName: "list.bullet")
                     .foregroundStyle(model.selectedBlock?.list?.kind == .unordered ? Color(nsColor: EditorAppearance.selectedForeground) : Color(nsColor: EditorAppearance.secondary))
-                    .modifier(FormatControlHover())
+                    .frame(width: 28, height: 28)
             }
             .buttonStyle(.borderless)
+            .modifier(FormatControlHover())
             .accessibilityLabel(EditorLanguage.text("Bulleted List"))
 
             Button {
@@ -199,17 +202,19 @@ struct NoteEditorView: View {
             } label: {
                 Image(systemName: "list.number")
                     .foregroundStyle(model.selectedBlock?.list?.kind == .ordered ? Color(nsColor: EditorAppearance.selectedForeground) : Color(nsColor: EditorAppearance.secondary))
-                    .modifier(FormatControlHover())
+                    .frame(width: 28, height: 28)
             }
             .buttonStyle(.borderless)
+            .modifier(FormatControlHover())
             .accessibilityLabel(EditorLanguage.text("Numbered List"))
 
             Button(action: chooseImages) {
                 Image(systemName: "photo")
                     .foregroundStyle(Color(nsColor: EditorAppearance.secondary))
-                    .modifier(FormatControlHover())
+                    .frame(width: 28, height: 28)
             }
             .buttonStyle(.borderless)
+            .modifier(FormatControlHover())
             .accessibilityHint(EditorLanguage.text("Add Image"))
             .accessibilityLabel(EditorLanguage.text("Add Image"))
 
@@ -554,15 +559,15 @@ struct NoteEditorView: View {
     }
 }
 
-/// Apply inside a toolbar control's label so its hover background is also in the click target.
-private struct FormatControlHover: ViewModifier {
-    var width: CGFloat? = 28
+/// Hover 背景外扩贴合 Button 自身 bounds（点击热区 = hover 背景区）；
+/// 热区尺寸由控件 label 的 frame 决定（工具栏按钮 label 带 28×28 frame；
+/// 目录按钮 label 带 height: 28，宽度随内容）。
+struct FormatControlHover: ViewModifier {
     @Environment(\.isEnabled) private var isEnabled
     @State private var isHovered = false
 
     func body(content: Content) -> some View {
         content
-            .frame(width: width, height: 28)
             .background {
                 RoundedRectangle(cornerRadius: 5, style: .continuous)
                     .fill(isHovered && isEnabled ? Color(nsColor: EditorAppearance.hover) : Color.clear)
@@ -595,9 +600,10 @@ struct FolderFolderButton: View {
                     .foregroundStyle(Color(nsColor: EditorAppearance.secondary))
             }
             .padding(.horizontal, 6)
-            .modifier(FormatControlHover(width: nil))
+            .frame(height: 28)
         }
         .buttonStyle(.borderless)
+        .modifier(FormatControlHover())
         .accessibilityHint(fullName)
         .accessibilityLabel(EditorLanguage.text("Choose Save Folder"))
     }
