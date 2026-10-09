@@ -1224,6 +1224,31 @@ final class EditorAppKitTests: XCTestCase {
         XCTAssertFalse(bridge.history.manager.canUndo)
     }
 
+    /// 纯输入回归测试：整段输入走原生路径（无回车、无显式 layout pass），
+    /// 换行折行使内容超出视口时，文档必须随之增长并滚动到光标可见，
+    /// 否则用户既看不到也滚不到视口之外的内容。
+    func testTypingWrappedTextGrowsDocumentAndKeepsCaretVisible() {
+        _ = NSApplication.shared
+        let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 320, height: 120), styleMask: [], backing: .buffered, defer: false)
+        let scroll = NSScrollView(frame: NSRect(x: 0, y: 0, width: 320, height: 120))
+        scroll.hasVerticalScroller = true
+        window.contentView = scroll; scroll.documentView = view
+        defer { scroll.documentView = nil; window.contentView = nil }
+        type(String(repeating: "wrapping paragraph keeps growing ", count: 40))
+        // Capture geometry before any explicit layout query can run a deferred pass.
+        let height = view.frame.height
+        let visibleMaxY = scroll.contentView.bounds.maxY
+        view.layoutManager!.ensureLayout(for: view.textContainer!)
+        let bottom = view.textContainerOrigin.y + view.layoutManager!.usedRect(for: view.textContainer!).maxY
+        let lastGlyph = view.layoutManager!.lineFragmentRect(forGlyphAt: view.layoutManager!.numberOfGlyphs - 1, effectiveRange: nil)
+        let caretBottom = view.textContainerOrigin.y + lastGlyph.maxY
+        XCTAssertGreaterThan(bottom, scroll.contentSize.height, "precondition: content must overflow the viewport")
+        XCTAssertGreaterThan(height, scroll.contentSize.height, "document frame must grow with typed content")
+        XCTAssertGreaterThanOrEqual(height, bottom, "frame must cover the full content so manual scrolling can reach the bottom")
+        XCTAssertGreaterThan(scroll.contentView.bounds.minY, 0, "viewport must auto-scroll while typing")
+        XCTAssertGreaterThanOrEqual(visibleMaxY + 1, caretBottom, "caret line must be visible")
+    }
+
     func testReturnScrollsToTrailingEmptyLineWithoutFurtherTyping() {
         _ = NSApplication.shared
         let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 320, height: 120), styleMask: [], backing: .buffered, defer: false)

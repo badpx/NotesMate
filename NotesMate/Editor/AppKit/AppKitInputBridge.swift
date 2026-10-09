@@ -318,6 +318,9 @@ final class AppKitInputBridge: NSObject, NSTextViewDelegate {
         if history.manager.isUndoing || history.manager.isRedoing { state.session.explicitInsertionStyle = false }
         if !state.session.explicitInsertionStyle { inheritInsertionStyle() }
         updateTypingAttributes()
+        // Native key edits (typing, wrapping, paste) bypass the reducer path, so the
+        // document would never grow and the caret could sink below the viewport.
+        view.scrollSelectionAfterLayout()
         changed()
         assert(document.text == storage.string, "Native input and document diverged")
     }
