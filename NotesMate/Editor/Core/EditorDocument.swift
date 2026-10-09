@@ -34,6 +34,10 @@ enum BlockKind: Codable, Equatable {
         return nil
     }
     var isCode: Bool { self == .codeLine }
+    var isHeading: Bool {
+        if case .heading = self { return true }
+        return false
+    }
     var isValid: Bool {
         switch self {
         case .heading(let level): return (1...3).contains(level)
@@ -124,7 +128,9 @@ struct EditorDocument: Codable, Equatable {
     }
 
     /// Preserve the left paragraph's identity when splitting/merging. The empty EOF node is real.
-    mutating func replace(_ range: NSRange, with fragment: EditorDocument, preserveBlocks: Bool = false) {
+    /// 返回粘贴内容末尾在新文档中的位置（光标落点）。
+    @discardableResult
+    mutating func replace(_ range: NSRange, with fragment: EditorDocument, preserveBlocks: Bool = false) -> Int {
         let map = PositionMap(self)
         let range = map.clamped(range)
         let start = map.position(at: range.location)
@@ -135,16 +141,50 @@ struct EditorDocument: Codable, Equatable {
         let suffix = right.slice(NSRange(location: end.offset, length: right.length - end.offset))
         var inserted = fragment.paragraphs.isEmpty ? [Paragraph()] : fragment.paragraphs
         for i in inserted.indices { inserted[i].id = UUID() }
+
+        // 粘贴内容的段落数与内容末尾位置（光标落点）。
+        let pastedCount = inserted.count
         inserted[0].id = left.id
-        if !preserveBlocks || start.offset > 0 { inserted[0].kind = left.kind }
+        if preserveBlocks, inserted[0].kind.isHeading, !fragment.paragraphs[0].isEmpty, !left.isEmpty {
+            // 规则二（EditorSpec §8）：非空落点（正文/列表项的行首/中间/行尾）粘贴标题——
+            // 降级为加粗内联文本，目标段落格式不变，不切割段落。
+            inserted[0].kind = left.kind
+            for j in inserted[0].runs.indices {
+                inserted[0].runs[j].style.font = nil
+                inserted[0].runs[j].style.marks.formUnion(.bold)
+            }
+        } else if !inserted[0].kind.isHeading,
+                  !preserveBlocks || start.offset > 0 || (left.isEmpty && left.kind != .body) {
+            // 粘贴只插入字符内容：目标段落为空且带非正文块级格式（空列表项/空标题/空代码行）时，
+            // 非标题首段继承目标格式；空行/空列表项粘贴标题时标题占据该行（规则一/三）。
+            inserted[0].kind = left.kind
+        }
         inserted[0].runs = Paragraph.coalesced(prefix + inserted[0].runs)
+        let suffixLength = suffix.reduce(0) { $0 + $1.length }
         let last = inserted.count - 1
-        inserted[last].runs = Paragraph.coalesced(inserted[last].runs + suffix)
+        // 标题段不并入后缀：片段末段是标题且目标行有后缀时，后缀独立成段（目标段落原格式）。
+        let suffixSplit = preserveBlocks && inserted[last].kind.isHeading && suffixLength > 0
+        let contentEndIndex = pastedCount - 1
+        if suffixSplit {
+            // 标题段不并入后缀：后缀独立成段（目标段落原格式）
+            inserted.append(Paragraph(kind: right.kind, runs: suffix))
+        } else {
+            inserted[last].runs = Paragraph.coalesced(inserted[last].runs + suffix)
+        }
+        let contentEndOffset = inserted[contentEndIndex].length - (suffixSplit ? 0 : suffixLength)
         if !preserveBlocks {
             for i in inserted.indices { inserted[i].kind = left.kind }
+        } else if case .list(let listKind, let depth) = left.kind {
+            // 富文本多行粘贴进列表项：后续行中的普通段落成为同级列表项（对齐备忘录），
+            // 粘贴内容自带的列表段落保留自身层级（可形成嵌套）；标题段落跳出列表。
+            for i in inserted.indices where i > 0 && inserted[i].kind.list == nil && !inserted[i].kind.isHeading {
+                inserted[i].kind = .list(listKind, depth)
+            }
         }
         paragraphs.replaceSubrange(start.index...end.index, with: inserted)
         assets.merge(fragment.assets) { _, new in new }
+        let newMap = PositionMap(self)
+        return newMap.starts[start.index + contentEndIndex] + contentEndOffset
     }
 
     func fragment(in range: NSRange) -> EditorDocument {
@@ -165,6 +205,17 @@ struct EditorDocument: Codable, Equatable {
         }
         var result = EditorDocument(paragraphs: output.isEmpty ? [Paragraph()] : output, assets: assets)
         result.pruneAssets()
+        return result
+    }
+
+    /// 外部剪贴板片段的尾部段落结束符不是内容：裁掉尾部空**正文**段落（EditorSpec §8）。
+    /// 空的列表/标题段落是真实内容（源片段里的空条目），保留。
+    func trimmingTrailingEmptyParagraphs() -> EditorDocument {
+        var result = self
+        while result.paragraphs.count > 1,
+              result.paragraphs.last!.isEmpty, result.paragraphs.last!.kind == .body {
+            result.paragraphs.removeLast()
+        }
         return result
     }
 

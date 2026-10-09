@@ -96,15 +96,21 @@ final class EditorLayoutManager: NSLayoutManager {
                        NSMaxRange(clipped) == NSMaxRange(line.glyphs) {
                         // 选区覆盖到该行末尾时保留原生「延伸到行右缘」：行末是换行符，
                         // 或行因软折行而延续（行内不含换行符且下个字形仍在同一段落）。
-                        let lineCharacters = characterRange(forGlyphRange: line.glyphs, actualGlyphRange: nil)
-                        let lineText = (storage.string as NSString).substring(with: lineCharacters)
-                        let nextIndex = NSMaxRange(lineCharacters)
-                        let softWrapped = !lineText.hasSuffix("\n") && nextIndex < storage.length
-                            && !(storage.string as NSString)
-                                .substring(with: NSRange(location: nextIndex, length: 1))
-                                .hasPrefix("\n")
-                        if lineText.hasSuffix("\n") || softWrapped {
-                            maxX = max(maxX, rightEdge)
+                        // 删除/undo 瞬态下行片段字形范围可能超出文本长度，先夹取。
+                        let lineCharacters = NSIntersectionRange(
+                            characterRange(forGlyphRange: line.glyphs, actualGlyphRange: nil),
+                            NSRange(location: 0, length: storage.length)
+                        )
+                        if lineCharacters.length > 0 {
+                            let string = storage.string as NSString
+                            let lineText = string.substring(with: lineCharacters)
+                            let nextIndex = NSMaxRange(lineCharacters)
+                            let softWrapped = !lineText.hasSuffix("\n") && nextIndex < storage.length
+                                && !string.substring(with: NSRange(location: nextIndex, length: 1))
+                                    .hasPrefix("\n")
+                            if lineText.hasSuffix("\n") || softWrapped {
+                                maxX = max(maxX, rightEdge)
+                            }
                         }
                     }
                 }

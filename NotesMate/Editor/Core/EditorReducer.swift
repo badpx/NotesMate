@@ -137,14 +137,23 @@ enum EditorReducer {
             switch kind {
             case .body: return false
             case .list(let type, let depth): state.document.paragraphs[position.index].kind = depth > 1 ? .list(type, depth - 1) : .body
-            default: state.document.paragraphs[position.index].kind = .body
+            default:
+                state.document.paragraphs[position.index].kind = .body
+                // 标题降级为纯正文：粘贴标题自带的显式粗体一并清除；手动 # 标题的粗体来自
+                // kind 渲染、无 marks，不受影响。斜体/下划线/删除线保留。
+                if kind.isHeading {
+                    for j in state.document.paragraphs[position.index].runs.indices {
+                        state.document.paragraphs[position.index].runs[j].style.marks.subtract(.bold)
+                    }
+                }
             }
             for j in state.document.paragraphs[position.index].runs.indices { state.document.paragraphs[position.index].runs[j].style.font = nil }
             resetInsertion(&state)
         case .replace(let range, let fragment, let preserve):
             let safe = map.clamped(range)
-            state.document.replace(safe, with: fragment, preserveBlocks: preserve)
-            state.session.selection = NSRange(location: safe.location + fragment.length, length: 0)
+            // 光标落在粘贴内容末尾（标题独立成段产生的前缀段落不计入）
+            let cursor = state.document.replace(safe, with: fragment, preserveBlocks: preserve)
+            state.session.selection = NSRange(location: cursor, length: 0)
         }
         return before != state
     }

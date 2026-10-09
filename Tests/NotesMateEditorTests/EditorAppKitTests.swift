@@ -637,7 +637,7 @@ final class EditorAppKitTests: XCTestCase {
             .paragraphStyle: style, .underlineStyle: 1, .strikethroughStyle: 1, .link: "https://example.com", .foregroundColor: NSColor.red])
         let fragment = ClipboardCodec.importRich(rich)
         XCTAssertEqual(fragment.paragraphs[0].kind, .list(.unordered, 2))
-        XCTAssertEqual(fragment.paragraphs[0].runs[0].style.font?.size, 22)
+        XCTAssertNil(fragment.paragraphs[0].runs[0].style.font) // 字号归一正文（EditorSpec §8）
         bridge.load(fragment)
         bridge.select(NSRange(location: 0, length: fragment.length))
         bridge.copy(to: pasteboard)
@@ -649,12 +649,294 @@ final class EditorAppKitTests: XCTestCase {
     }
 
     func testFontTiers_P02_L10() {
-        for (size, expected) in [(16, 15), (17, 18), (20, 18), (21, 22), (22, 22)] {
+        // 字号归一正文：非粗体不产生标题档（EditorSpec §8）
+        for size in [16, 17, 20, 21, 22, 24] {
             let rich = NSAttributedString(string: "x", attributes: [.font: NSFont.systemFont(ofSize: CGFloat(size))])
-            XCTAssertEqual(ClipboardCodec.importRich(rich).paragraphs[0].runs[0].style.font?.size, expected)
+            XCTAssertNil(ClipboardCodec.importRich(rich).paragraphs[0].runs[0].style.font)
+            XCTAssertEqual(ClipboardCodec.importRich(rich).paragraphs[0].kind, .body)
         }
+        // 粗体大字号映射到标题档位（kind=heading），粗体经 marks 保留
+        let bold24 = NSAttributedString(string: "x", attributes: [.font: NSFont.boldSystemFont(ofSize: 24)])
+        XCTAssertEqual(ClipboardCodec.importRich(bold24).paragraphs[0].kind, .heading(1))
+        XCTAssertNil(ClipboardCodec.importRich(bold24).paragraphs[0].runs[0].style.font)
+        XCTAssertTrue(ClipboardCodec.importRich(bold24).paragraphs[0].runs[0].style.marks.contains(.bold))
+        let bold18 = NSAttributedString(string: "x", attributes: [.font: NSFont.boldSystemFont(ofSize: 18)])
+        XCTAssertEqual(ClipboardCodec.importRich(bold18).paragraphs[0].kind, .heading(2))
+        // 等宽优先保留为代码字体，不参与标题判定
         let mono = NSAttributedString(string: "x", attributes: [.font: NSFont(name: "Courier", size: 24)!])
+        XCTAssertEqual(ClipboardCodec.importRich(mono).paragraphs[0].kind, .body)
         XCTAssertEqual(ClipboardCodec.importRich(mono).paragraphs[0].runs[0].style.font, FontIntent(size: 14, monospaced: true))
+    }
+
+    /// Bug 回归：列表空项上粘贴普通富文本，列表不得消失——首行继承列表项格式，后续行成为同级列表项。
+    func testPasteRichIntoEmptyListItemKeepsList() {
+        type("- 项目")
+        view.insertNewline(nil) // 新的空列表项
+        XCTAssertEqual(bridge.document.paragraphs.map(\.kind), [.list(.unordered, 1), .list(.unordered, 1)])
+
+        let board = NSPasteboard.withUniqueName()
+        defer { board.releaseGlobally() }
+        let rich = NSMutableAttributedString(string: "第一行\n第二行")
+        rich.addAttribute(.font, value: NSFont.systemFont(ofSize: 14),
+                          range: NSRange(location: 0, length: rich.length))
+        board.setData(rich.rtf(from: NSRange(location: 0, length: rich.length), documentAttributes: [:]), forType: .rtf)
+        bridge.paste(from: board)
+
+        XCTAssertEqual(bridge.document.text, "项目\n第一行\n第二行")
+        XCTAssertEqual(bridge.document.paragraphs.map(\.kind),
+                       [.list(.unordered, 1), .list(.unordered, 1), .list(.unordered, 1)])
+        assertProjection()
+    }
+
+    /// 规则：粘贴的标题赋予 heading kind 并独立成段——空列表项中粘贴标题，标题占据该段（跳出列表）。
+    func testPasteHeadingIntoEmptyListItemBreaksOut() {
+        type("- 项目")
+        view.insertNewline(nil)
+
+        let board = NSPasteboard.withUniqueName()
+        defer { board.releaseGlobally() }
+        let rich = NSMutableAttributedString(string: "第一行\n第二行")
+        rich.addAttribute(.font, value: NSFont.boldSystemFont(ofSize: 24),
+                          range: NSRange(location: 0, length: rich.length))
+        board.setData(rich.rtf(from: NSRange(location: 0, length: rich.length), documentAttributes: [:]), forType: .rtf)
+        bridge.paste(from: board)
+
+        XCTAssertEqual(bridge.document.text, "项目\n第一行\n第二行")
+        XCTAssertEqual(bridge.document.paragraphs.map(\.kind),
+                       [.list(.unordered, 1), .heading(1), .heading(1)])
+        assertProjection()
+    }
+
+    /// 规则：粘贴标题按落点分三分支——空正文→标题成段；非空落点→降级为加粗内联文本（不切割、
+    /// 列表不跳出）；空列表项→标题占据该行。光标永远在粘贴内容末尾；Backspace 降级为纯正文。
+    func testPastedHeadingGetsOwnParagraphEverywhere() {
+        // 落点 1：空正文（空文档）——标题成段，尾部无多余空行
+        let board = NSPasteboard.withUniqueName()
+        defer { board.releaseGlobally() }
+        let heading = NSAttributedString(string: "大标题", attributes: [.font: NSFont.boldSystemFont(ofSize: 24)])
+        board.setData(heading.rtf(from: NSRange(location: 0, length: heading.length), documentAttributes: [:]), forType: .rtf)
+        bridge.paste(from: board)
+        XCTAssertEqual(bridge.document.paragraphs.map(\.kind), [.heading(1)])
+        XCTAssertEqual(bridge.document.text, "大标题")
+        XCTAssertEqual(bridge.state.session.selection.location, 3, "落点 1 光标在粘贴内容末尾")
+
+        // 段首 Backspace → 降级为纯正文：kind 为 body，粘贴自带的显式粗体一并清除
+        bridge.select(NSRange(location: 0, length: 0))
+        view.deleteBackward(nil)
+        XCTAssertEqual(bridge.document.paragraphs[0].kind, .body)
+        XCTAssertEqual(bridge.document.text, "大标题")
+        XCTAssertFalse(bridge.document.paragraphs[0].runs[0].style.marks.contains(.bold),
+                       "降级后不带粗体 marks")
+
+        // 落点 2：正文段落中间——降级为加粗内联文本，不切割段落
+        bridge.load(EditorDocument())
+        type("前后")
+        bridge.select(NSRange(location: 1, length: 0))
+        bridge.paste(from: board)
+        XCTAssertEqual(bridge.document.paragraphs.map(\.kind), [.body])
+        XCTAssertEqual(bridge.document.text, "前大标题后")
+        XCTAssertEqual(bridge.state.session.selection.location, 4, "落点 2 光标在粘贴内容末尾")
+        XCTAssertTrue(bridge.document.paragraphs[0].runs[1].style.marks.contains(.bold), "内联降级保留粗体")
+
+        // 落点 3：列表项中间——列表项仍是列表项，不跳出
+        bridge.load(EditorDocument())
+        type("- 项目")
+        bridge.select(NSRange(location: 1, length: 0))
+        bridge.paste(from: board)
+        XCTAssertEqual(bridge.document.paragraphs.map(\.kind), [.list(.unordered, 1)])
+        XCTAssertEqual(bridge.document.text, "项大标题目")
+        XCTAssertEqual(bridge.state.session.selection.location, 4, "落点 3 光标在粘贴内容末尾")
+
+        // 落点 4：空列表项——标题占据该行（跳出列表），无尾部空行
+        bridge.load(EditorDocument())
+        type("- 项目")
+        view.insertNewline(nil)
+        bridge.paste(from: board)
+        XCTAssertEqual(bridge.document.paragraphs.map(\.kind), [.list(.unordered, 1), .heading(1)])
+        XCTAssertEqual(bridge.document.text, "项目\n大标题")
+        XCTAssertEqual(bridge.state.session.selection.location, 6, "落点 4 光标在粘贴内容末尾")
+
+        // 落点 5：正文行尾——同样内联降级，不换行
+        bridge.load(EditorDocument())
+        type("前文")
+        bridge.select(NSRange(location: 2, length: 0))
+        bridge.paste(from: board)
+        XCTAssertEqual(bridge.document.paragraphs.map(\.kind), [.body])
+        XCTAssertEqual(bridge.document.text, "前文大标题")
+        XCTAssertEqual(bridge.state.session.selection.location, 5, "落点 5 光标在标题末尾")
+        assertProjection()
+    }
+
+    /// 补充规则：多行片段首段按落点规则、后续段落保持自身 kind（标题仍独立成段）。
+    func testPastedMultilineHeadingFirstDegradesRestStays() {
+        let board = NSPasteboard.withUniqueName()
+        defer { board.releaseGlobally() }
+        let rich = NSMutableAttributedString(string: "大标题\n次标题")
+        rich.addAttribute(.font, value: NSFont.boldSystemFont(ofSize: 24), range: NSRange(location: 0, length: rich.length))
+        board.setData(rich.rtf(from: NSRange(location: 0, length: rich.length), documentAttributes: [:]), forType: .rtf)
+        type("前后")
+        bridge.select(NSRange(location: 1, length: 0))
+        bridge.paste(from: board)
+        // 首段降级内联（加粗），次段保持标题独立成段，目标行后缀独立成段
+        XCTAssertEqual(bridge.document.paragraphs.map(\.kind), [.body, .heading(1), .body])
+        XCTAssertEqual(bridge.document.text, "前大标题\n次标题\n后")
+        XCTAssertEqual(bridge.state.session.selection.location, 8, "光标在多行粘贴内容末尾")
+        assertProjection()
+    }
+
+    /// Bug 回归：降级只去粗体，不误伤同段其它刻意格式（斜体保留）。
+    func testDegradePastedHeadingKeepsItalicButNotBold() {
+        let board = NSPasteboard.withUniqueName()
+        defer { board.releaseGlobally() }
+        let font = NSFontManager.shared.convert(NSFont.boldSystemFont(ofSize: 24), toHaveTrait: .italicFontMask)
+        let heading = NSAttributedString(string: "粗斜标题", attributes: [.font: font])
+        board.setData(heading.rtf(from: NSRange(location: 0, length: heading.length), documentAttributes: [:]), forType: .rtf)
+        bridge.paste(from: board)
+        XCTAssertEqual(bridge.document.paragraphs[0].kind, .heading(1))
+        XCTAssertTrue(bridge.document.paragraphs[0].runs[0].style.marks.contains(.bold))
+        XCTAssertTrue(bridge.document.paragraphs[0].runs[0].style.marks.contains(.italic))
+
+        bridge.select(NSRange(location: 0, length: 0))
+        view.deleteBackward(nil)
+        XCTAssertEqual(bridge.document.paragraphs[0].kind, .body)
+        XCTAssertFalse(bridge.document.paragraphs[0].runs[0].style.marks.contains(.bold))
+        XCTAssertTrue(bridge.document.paragraphs[0].runs[0].style.marks.contains(.italic), "斜体保留")
+    }
+
+    /// Bug 回归：纯文本/多行/行内粘贴的光标落点均在粘贴内容末尾。
+    func testPasteCursorLandsAtEndOfInsertedContent() {
+        let board = NSPasteboard.withUniqueName()
+        defer { board.releaseGlobally() }
+
+        // 纯文本行尾
+        type("前文")
+        board.setString("X", forType: .string)
+        bridge.paste(from: board)
+        XCTAssertEqual(bridge.document.text, "前文X")
+        XCTAssertEqual(bridge.state.session.selection.location, 3, "纯文本行尾")
+
+        // 多行纯文本：首行并入当前段落（标准粘贴行为），光标在末尾
+        bridge.load(EditorDocument())
+        type("前文")
+        board.clearContents()
+        board.setString("一\n二", forType: .string)
+        bridge.paste(from: board)
+        XCTAssertEqual(bridge.document.text, "前文一\n二")
+        XCTAssertEqual(bridge.state.session.selection.location, bridge.document.length, "多行纯文本末尾")
+
+        // 列表项中多行富文本 → 首行并入当前项，后续行同级列表项，光标在末尾
+        bridge.load(EditorDocument())
+        type("- 项目")
+        bridge.select(NSRange(location: 2, length: 0))
+        let rich = NSMutableAttributedString(string: "甲\n乙")
+        rich.addAttribute(.font, value: NSFont.systemFont(ofSize: 14), range: NSRange(location: 0, length: rich.length))
+        board.clearContents()
+        board.setData(rich.rtf(from: NSRange(location: 0, length: rich.length), documentAttributes: [:]), forType: .rtf)
+        bridge.paste(from: board)
+        XCTAssertEqual(bridge.document.text, "项目甲\n乙")
+        XCTAssertEqual(bridge.document.paragraphs.map(\.kind),
+                       [.list(.unordered, 1), .list(.unordered, 1)])
+        XCTAssertEqual(bridge.state.session.selection.location, bridge.document.length, "列表多行粘贴末尾")
+        assertProjection()
+    }
+
+    /// Bug 回归：Chromium 系复制的「标题 + 空列表项」片段把标记符写进文本（\t•\t），
+    /// 剥离后保留一个空列表项——标题下方只出现一个项目符（剪切板实测样本形态）。
+    func testPasteStripsListMarkerTextFromListParagraphs() {
+        let board = NSPasteboard.withUniqueName()
+        defer { board.releaseGlobally() }
+        board.setData("<meta charset=\"utf-8\"><h2><b>文档同步</b></h2><ul><li></li></ul><br>".data(using: .utf8), forType: .html)
+        board.setString("文档同步\n", forType: .string)
+        bridge.paste(from: board)
+        XCTAssertEqual(bridge.document.paragraphs.map(\.kind), [.heading(2), .list(.unordered, 1)])
+        XCTAssertEqual(bridge.document.text, "文档同步\n")
+        XCTAssertTrue(bridge.document.paragraphs[1].isEmpty, "标记符剥离后为空列表项")
+        assertProjection()
+    }
+
+    /// 变体：标题 + 非空列表项——条目文本保留，标记符不重复出现。
+    func testPasteStripsMarkerButKeepsItemText() {
+        let board = NSPasteboard.withUniqueName()
+        defer { board.releaseGlobally() }
+        board.setData("<meta charset=\"utf-8\"><h2><b>文档同步</b></h2><ul><li>内容</li></ul>".data(using: .utf8), forType: .html)
+        board.setString("文档同步\n内容", forType: .string)
+        bridge.paste(from: board)
+        XCTAssertEqual(bridge.document.paragraphs.map(\.kind), [.heading(2), .list(.unordered, 1)])
+        XCTAssertEqual(bridge.document.text, "文档同步\n内容")
+        assertProjection()
+    }
+
+    /// Bug 回归：非空落点粘贴标题降级为加粗内联文本后，字体族与字号与正文逐字节一致（只多粗体）。
+    /// （HEAD 旧档位逻辑下该 run 残留 FontIntent(18) → 渲染 18px 比正文大一号。）
+    func testDegradedPastedHeadingMatchesBodyFontExactly() {
+        type("前后")
+        bridge.select(NSRange(location: 1, length: 0))
+        let board = NSPasteboard.withUniqueName()
+        defer { board.releaseGlobally() }
+        let rich = NSAttributedString(string: "标题", attributes: [.font: NSFont(name: "HelveticaNeue-Bold", size: 18)!])
+        board.setData(rich.rtf(from: NSRange(location: 0, length: rich.length), documentAttributes: [:]), forType: .rtf)
+        bridge.paste(from: board)
+
+        XCTAssertEqual(bridge.document.text, "前标题后")
+        let runs = bridge.document.paragraphs[0].runs
+        XCTAssertEqual(runs.count, 3)
+        XCTAssertTrue(runs[1].style.marks.contains(.bold))
+        XCTAssertNil(runs[1].style.font, "降级路径已清空字体档位")
+
+        // 渲染层逐字节比对：族与字号与正文一致，仅多粗体 trait
+        let storage = view.textStorage!
+        let bodyFont = storage.attribute(.font, at: 0, effectiveRange: nil) as! NSFont
+        let pastedFont = storage.attribute(.font, at: 1, effectiveRange: nil) as! NSFont
+        XCTAssertEqual(pastedFont.pointSize, bodyFont.pointSize)
+        XCTAssertEqual(pastedFont.familyName, bodyFont.familyName)
+        XCTAssertTrue(NSFontManager.shared.traits(of: pastedFont).contains(.boldFontMask))
+
+        // 取消粗体后与正文逐字节一致
+        bridge.select(NSRange(location: 1, length: 2))
+        bridge.execute(.toggle(.bold), name: EditorLanguage.text("Bold"))
+        let unbolded = view.textStorage!.attribute(.font, at: 1, effectiveRange: nil) as! NSFont
+        let bodyFontAfter = view.textStorage!.attribute(.font, at: 0, effectiveRange: nil) as! NSFont
+        XCTAssertEqual(unbolded, bodyFontAfter)
+        assertProjection()
+    }
+
+    /// Bug 回归：HTML 片段尾部的段落结束符不产生空行（含 <div><br></div> 尾巴的形态）。
+    func testPasteTrimsTrailingEmptyParagraphs() {
+        let board = NSPasteboard.withUniqueName()
+        defer { board.releaseGlobally() }
+        board.setData("<meta charset=\"utf-8\"><h1><b>大标题</b></h1><div><br></div>".data(using: .utf8), forType: .html)
+        board.setString("大标题\n\n", forType: .string)
+        bridge.paste(from: board)
+        XCTAssertEqual(bridge.document.paragraphs.count, 1)
+        XCTAssertEqual(bridge.document.text, "大标题")
+
+        // 内部空行保留：多行粘贴的内部换行不受影响
+        bridge.load(EditorDocument())
+        board.clearContents()
+        board.setString("甲\n\n乙\n", forType: .string)
+        bridge.paste(from: board)
+        XCTAssertEqual(bridge.document.text, "甲\n\n乙")
+        XCTAssertEqual(bridge.document.paragraphs.count, 3)
+    }
+
+    /// 多行粘贴进列表项：首段继承目标格式，后续行中的自带列表段落保留自身层级（可嵌套）。
+    func testPasteListFragmentIntoListItemKeepsNesting() {
+        type("- 项目")
+        view.insertNewline(nil)
+        // 内部剪贴板：两行的二级有序列表片段
+        let fragment = EditorDocument(paragraphs: [
+            Paragraph(kind: .list(.ordered, 2), runs: [InlineRun(text: "自带甲")]),
+            Paragraph(kind: .list(.ordered, 2), runs: [InlineRun(text: "自带乙")]),
+        ])
+        let board = NSPasteboard.withUniqueName()
+        defer { board.releaseGlobally() }
+        ClipboardCodec.write(fragment, to: board)
+        bridge.paste(from: board)
+        // 首段并入空列表项（无序一级），第二段保留自身层级（有序二级 → 形成嵌套）
+        XCTAssertEqual(bridge.document.paragraphs.map(\.kind),
+                       [.list(.unordered, 1), .list(.unordered, 1), .list(.ordered, 2)])
+        XCTAssertEqual(bridge.document.text, "项目\n自带甲\n自带乙")
+        assertProjection()
     }
 
     func testImageRepresentationsAttachmentsAndUndo_P04_P08_M06_E06() {
