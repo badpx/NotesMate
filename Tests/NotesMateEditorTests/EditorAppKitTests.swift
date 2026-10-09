@@ -267,7 +267,7 @@ final class EditorAppKitTests: XCTestCase {
         let layout = try XCTUnwrap(view.layoutManager as? EditorLayoutManager)
         layout.ensureLayout(for: view.textContainer!)
         let line = layout.lineFragmentRect(forGlyphAt: 0, effectiveRange: nil).offsetBy(dx: view.textContainerOrigin.x, dy: view.textContainerOrigin.y)
-        let rect = try XCTUnwrap(layout.selectionBackgroundRects([line], characterRange: NSRange(location: 0, length: 1), origin: view.textContainerOrigin).first)
+        let rect = try XCTUnwrap(layout.selectionBackgroundRects([line], selectedGlyphs: NSRange(location: 0, length: 1), origin: view.textContainerOrigin).first)
         let attachment = view.textStorage!.attribute(.attachment, at: 0, effectiveRange: nil) as! NSTextAttachment
         XCTAssertEqual(rect.height, attachment.bounds.height)
         XCTAssertEqual(rect.midY, line.minY + layout.location(forGlyphAt: 0).y - attachment.bounds.midY, accuracy: 0.01)
@@ -275,9 +275,34 @@ final class EditorAppKitTests: XCTestCase {
         bridge.load(.plain("第一行\n第二行\n第三行"))
         layout.ensureLayout(for: view.textContainer!)
         let merged = layout.usedRect(for: view.textContainer!).offsetBy(dx: view.textContainerOrigin.x, dy: view.textContainerOrigin.y)
-        let split = layout.selectionBackgroundRects([merged], characterRange: NSRange(location: 0, length: bridge.document.length), origin: view.textContainerOrigin)
+        let split = layout.selectionBackgroundRects([merged], selectedGlyphs: NSRange(location: 0, length: bridge.document.length), origin: view.textContainerOrigin)
         XCTAssertEqual(split.count, 3)
         XCTAssertTrue(split.allSatisfy { $0.height == split[0].height })
+    }
+
+    /// Selection crossing list items must start at each line's text start, never bleed
+    /// left into the indent/gutter (AppKit's native rects extend to the fragment edge
+    /// whenever the selection covers the line start).
+    func testSelectionDoesNotBleedIntoListIndent() throws {
+        bridge.load(EditorDocument(paragraphs: [
+            Paragraph(kind: .list(.unordered, 1), runs: [InlineRun(text: "列表项甲内容内容内容内容")]),
+            Paragraph(kind: .list(.unordered, 1), runs: [InlineRun(text: "列表项乙内容内容内容内容")]),
+        ]))
+        let layout = try XCTUnwrap(view.layoutManager as? EditorLayoutManager)
+        let container = try XCTUnwrap(view.textContainer)
+        layout.ensureLayout(for: container)
+        // 第一项中间 → 第二项中间
+        let selection = NSRange(location: 4, length: 18)
+        let glyphs = layout.glyphRange(forCharacterRange: selection, actualCharacterRange: nil)
+        var rects: [NSRect] = []
+        layout.enumerateEnclosingRects(forGlyphRange: glyphs, withinSelectedGlyphRange: glyphs,
+                                       in: container) { rect, _ in rects.append(rect) }
+        XCTAssertEqual(rects.count, 2)
+        let textStart = container.lineFragmentPadding + 22 // L1 缩进后的文字起点
+        for rect in rects {
+            XCTAssertGreaterThanOrEqual(rect.minX, textStart - 1,
+                                        "selection must not bleed into the gutter: \(rect)")
+        }
     }
 
     func testPickedImagesInsertAtSelectionAndUndoTogether() {

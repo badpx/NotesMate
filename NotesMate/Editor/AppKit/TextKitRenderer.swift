@@ -34,7 +34,7 @@ final class EditorLayoutManager: NSLayoutManager {
         let rects = UnsafeBufferPointer(start: rectArray, count: rectCount).map {
             $0.offsetBy(dx: origin.x - drawingOrigin.x, dy: origin.y - drawingOrigin.y)
         }
-        let adjusted = selectionBackgroundRects(rects, characterRange: charRange, origin: origin).map {
+        let adjusted = selectionBackgroundRects(rects, selectedGlyphs: glyphRange(forCharacterRange: charRange, actualCharacterRange: nil), origin: origin).map {
             $0.offsetBy(dx: drawingOrigin.x - origin.x, dy: drawingOrigin.y - origin.y)
         }
         adjusted.withUnsafeBufferPointer { buffer in
@@ -56,11 +56,10 @@ final class EditorLayoutManager: NSLayoutManager {
         // Supply the same geometry to selection tracking, invalidation and painting. Changing
         // rectangles only at fill time leaves the upward extension clipped during mouse tracking.
         let origin = view.textContainerOrigin
-        let characters = characterRange(forGlyphRange: glyphRange, actualGlyphRange: nil)
         super.enumerateEnclosingRects(forGlyphRange: glyphRange, withinSelectedGlyphRange: selectedRange,
                                        in: container) { rect, stop in
             let adjusted = self.selectionBackgroundRects([rect.offsetBy(dx: origin.x, dy: origin.y)],
-                                                         characterRange: characters, origin: origin)
+                                                         selectedGlyphs: selectedRange, origin: origin)
             for rect in adjusted {
                 block(rect.offsetBy(dx: -origin.x, dy: -origin.y), stop)
                 if stop.pointee.boolValue { break }
@@ -68,22 +67,50 @@ final class EditorLayoutManager: NSLayoutManager {
         }
     }
 
-    /// Keep horizontal selection geometry native; center each visual line vertically.
-    func selectionBackgroundRects(_ rects: [NSRect], characterRange: NSRange, origin: NSPoint) -> [NSRect] {
-        guard let view = textContainers.first?.textView as? EditorTextView else { return rects }
-        let glyphs = glyphRange(forCharacterRange: characterRange, actualCharacterRange: nil)
-        var lines: [NSRect] = []
-        enumerateLineFragments(forGlyphRange: glyphs) { line, _, _, _, _ in
-            lines.append(line.offsetBy(dx: origin.x, dy: origin.y))
+    /// 逐行选区几何：水平范围取「该行字形 ∩ 选区」的字形包围矩形，而不是行片段左缘——
+    /// AppKit 原生矩形在选区含行首/换行符时会延伸到片段左缘（缩进/排水区被涂色），
+    /// 列表与代码块内容必须精确到文字起点。选中到行尾（含换行符）保留原生「延伸到行右缘」；
+    /// 每行垂直居中逻辑（7e2562b）不变。
+    func selectionBackgroundRects(_ rects: [NSRect], selectedGlyphs: NSRange, origin: NSPoint) -> [NSRect] {
+        guard let view = textContainers.first?.textView as? EditorTextView,
+              let container = view.textContainer else { return rects }
+        var lines: [(rect: NSRect, glyphs: NSRange)] = []
+        enumerateLineFragments(forGlyphRange: selectedGlyphs) { line, _, _, lineGlyphs, _ in
+            lines.append((line.offsetBy(dx: origin.x, dy: origin.y), lineGlyphs))
         }
+        let rightEdge = origin.x + container.containerSize.width - container.lineFragmentPadding
         return rects.flatMap { rect -> [NSRect] in
             // AppKit can combine adjacent full-width selections into one tall rectangle.
-            let fragments = lines.filter { min($0.maxY, rect.maxY) > max($0.minY, rect.minY) }
+            let fragments = lines.filter { min($0.rect.maxY, rect.maxY) > max($0.rect.minY, rect.minY) }
             guard !fragments.isEmpty else { return [rect] }
             return fragments.map { line in
-                let probe = NSRect(x: rect.minX, y: line.minY, width: rect.width, height: line.height)
+                var minX = rect.minX
+                var maxX = rect.maxX
+                let clipped = NSIntersectionRange(line.glyphs, selectedGlyphs)
+                if clipped.length > 0 {
+                    let bounds = boundingRect(forGlyphRange: clipped, in: container)
+                        .offsetBy(dx: origin.x, dy: origin.y)
+                    minX = bounds.minX
+                    maxX = bounds.maxX
+                    if let storage = view.textStorage,
+                       NSMaxRange(clipped) == NSMaxRange(line.glyphs) {
+                        // 选区覆盖到该行末尾时保留原生「延伸到行右缘」：行末是换行符，
+                        // 或行因软折行而延续（行内不含换行符且下个字形仍在同一段落）。
+                        let lineCharacters = characterRange(forGlyphRange: line.glyphs, actualGlyphRange: nil)
+                        let lineText = (storage.string as NSString).substring(with: lineCharacters)
+                        let nextIndex = NSMaxRange(lineCharacters)
+                        let softWrapped = !lineText.hasSuffix("\n") && nextIndex < storage.length
+                            && !(storage.string as NSString)
+                                .substring(with: NSRange(location: nextIndex, length: 1))
+                                .hasPrefix("\n")
+                        if lineText.hasSuffix("\n") || softWrapped {
+                            maxX = max(maxX, rightEdge)
+                        }
+                    }
+                }
+                let probe = NSRect(x: minX, y: line.rect.minY, width: maxX - minX, height: line.rect.height)
                 let caret = view.insertionPointDrawingRect(probe)
-                return NSRect(x: rect.minX, y: caret.minY, width: rect.width, height: caret.height)
+                return NSRect(x: minX, y: caret.minY, width: maxX - minX, height: caret.height)
             }
         }
     }
