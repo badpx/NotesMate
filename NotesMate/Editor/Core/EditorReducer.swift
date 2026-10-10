@@ -28,8 +28,11 @@ enum EditorReducer {
             }
             resetInsertion(&state)
         case .list(let kind):
-            let remove = indices.allSatisfy { state.document.paragraphs[$0].kind.list?.kind == kind }
-            for i in indices {
+            // 图片段落恒为正文（EditorSpec §8.2）：列表开关跳过纯附件段。
+            let targets = indices.filter { !state.document.paragraphs[$0].isAttachmentOnly }
+            guard !targets.isEmpty else { return false }
+            let remove = targets.allSatisfy { state.document.paragraphs[$0].kind.list?.kind == kind }
+            for i in targets {
                 let depth = state.document.paragraphs[i].kind.list?.depth ?? 1
                 state.document.paragraphs[i].kind = remove ? .body : .list(kind, depth)
                 for j in state.document.paragraphs[i].runs.indices { state.document.paragraphs[i].runs[j].style.font = nil }

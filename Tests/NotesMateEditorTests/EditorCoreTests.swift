@@ -324,4 +324,89 @@ final class EditorCoreTests: XCTestCase {
         XCTAssertTrue(html.hasSuffix("<div><br></div>"))
         XCTAssertFalse(html.contains("h1")); XCTAssertFalse(html.contains("24px"))
     }
+
+    /// 图片段落恒为正文（EditorSpec §8.2）：列表项任意落点插入图片都独立成正文行，
+    /// 前缀保留在原列表项、后缀独立成段保留列表格式（对齐标题独立成段语义）。
+    func testImageParagraphsStayBodyWhenInsertedIntoLists() {
+        let id = UUID()
+        let asset = ImageAsset(data: Data([0x01, 0x02]), width: 20, height: 20)
+        func imageFragment(_ count: Int = 1) -> EditorDocument {
+            EditorDocument(paragraphs: (0..<count).map { _ in Paragraph(runs: [.image(id)]) }, assets: [id: asset])
+        }
+        func listDoc(_ text: String, _ kind: ListKind = .unordered) -> EditorDocument {
+            EditorDocument(paragraphs: [Paragraph(kind: .list(kind, 1), runs: text.isEmpty ? [] : [InlineRun(text: text)])])
+        }
+
+        // 空列表项：图片占据该行，成为正文
+        var doc = listDoc("")
+        doc.replace(NSRange(location: 0, length: 0), with: imageFragment())
+        XCTAssertEqual(doc.paragraphs.map(\.kind), [.body])
+        XCTAssertEqual(doc.text, "\u{FFFC}")
+
+        // 行首：图片独立正文行在前，原文保留列表格式
+        doc = listDoc("item")
+        var fragment = imageFragment(); fragment.paragraphs.append(Paragraph())
+        doc.replace(NSRange(location: 0, length: 0), with: fragment)
+        XCTAssertEqual(doc.paragraphs.map(\.kind), [.body, .list(.unordered, 1)])
+        XCTAssertEqual(doc.text, "\u{FFFC}\nitem")
+
+        // 中间：前缀留在列表项，图片独立正文行，后缀独立成段保留列表格式
+        doc = listDoc("item")
+        fragment = imageFragment(); fragment.paragraphs.insert(Paragraph(), at: 0); fragment.paragraphs.append(Paragraph())
+        doc.replace(NSRange(location: 2, length: 0), with: fragment)
+        XCTAssertEqual(doc.paragraphs.map(\.kind), [.list(.unordered, 1), .body, .list(.unordered, 1)])
+        XCTAssertEqual(doc.text, "it\n\u{FFFC}\nem")
+
+        // 行尾（有序列表）：原列表项不变，图片正文行在后
+        doc = listDoc("item", .ordered)
+        fragment = imageFragment(); fragment.paragraphs.insert(Paragraph(), at: 0)
+        doc.replace(NSRange(location: 4, length: 0), with: fragment)
+        XCTAssertEqual(doc.paragraphs.map(\.kind), [.list(.ordered, 1), .body])
+        XCTAssertEqual(doc.text, "item\n\u{FFFC}")
+
+        // 连续多张各自独立正文行
+        doc = listDoc("ab")
+        fragment = imageFragment(2); fragment.paragraphs.insert(Paragraph(), at: 0); fragment.paragraphs.append(Paragraph())
+        doc.replace(NSRange(location: 1, length: 0), with: fragment)
+        XCTAssertEqual(doc.paragraphs.map(\.kind), [.list(.unordered, 1), .body, .body, .list(.unordered, 1)])
+        XCTAssertEqual(doc.assetOrder.count, 2)
+
+        // 富文本多行粘贴进列表项（preserveBlocks=true）：文字行成为同级列表项，图片行仍正文
+        doc = listDoc("x")
+        let rich = EditorDocument(paragraphs: [
+            Paragraph(runs: [InlineRun(text: "p1")]),
+            Paragraph(runs: [.image(id)]),
+            Paragraph(runs: [InlineRun(text: "p2")]),
+        ], assets: [id: asset])
+        doc.replace(NSRange(location: 1, length: 0), with: rich, preserveBlocks: true)
+        XCTAssertEqual(doc.paragraphs.map(\.kind), [.list(.unordered, 1), .body, .list(.unordered, 1)])
+        XCTAssertEqual(doc.text, "xp1\n\u{FFFC}\np2")
+
+        // 导出：图片段输出 <div>，不被 <li> 包裹；图片中断后编号重启（§11.5）
+        doc = EditorDocument(paragraphs: [
+            Paragraph(kind: .list(.ordered, 1), runs: [InlineRun(text: "一")]),
+            Paragraph(runs: [.image(id)]),
+            Paragraph(kind: .list(.ordered, 1), runs: [InlineRun(text: "二")]),
+        ], assets: [id: asset])
+        let html = HTMLExporter.export(doc).bodyHTML
+        XCTAssertTrue(html.contains("<div>\(HTMLExporter.imagePlaceholder(0))</div>"))
+        XCTAssertFalse(html.contains("<li>\(HTMLExporter.imagePlaceholder(0))"))
+        XCTAssertEqual(ListResolver.resolve(doc)[2]?.number, 1)
+    }
+
+    /// 列表开关跳过纯图片段（EditorSpec §8.2）：图片行不产生列表标记；混合选区只作用于文字行。
+    func testListToggleSkipsAttachmentOnlyParagraphs() {
+        let id = UUID()
+        let asset = ImageAsset(data: Data([0x01, 0x02]), width: 20, height: 20)
+        var state = EditorSnapshot(document: EditorDocument(paragraphs: [
+            Paragraph(runs: [.image(id)]),
+            Paragraph(runs: [InlineRun(text: "文字")]),
+        ], assets: [id: asset]), session: EditorSession())
+        state.session.selection = NSRange(location: 0, length: 1)
+        XCTAssertFalse(EditorReducer.apply(.list(.unordered), to: &state))
+        XCTAssertEqual(state.document.paragraphs[0].kind, .body)
+        state.session.selection = NSRange(location: 0, length: state.document.length)
+        EditorReducer.apply(.list(.ordered), to: &state)
+        XCTAssertEqual(state.document.paragraphs.map(\.kind), [.body, .list(.ordered, 1)])
+    }
 }

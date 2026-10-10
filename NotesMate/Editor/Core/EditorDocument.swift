@@ -64,6 +64,8 @@ struct Paragraph: Codable, Equatable, Identifiable {
     var text: String { runs.map(\.text).joined() }
     var length: Int { runs.reduce(0) { $0 + $1.length } }
     var isEmpty: Bool { runs.allSatisfy { $0.text.isEmpty } }
+    /// 纯附件段落（整段只有图片）：恒为正文，不参与列表语义（EditorSpec §8.2）。
+    var isAttachmentOnly: Bool { !runs.isEmpty && runs.allSatisfy { $0.assetID != nil } }
 
     init(id: UUID = UUID(), kind: BlockKind = .body, runs: [InlineRun] = []) {
         self.id = id
@@ -181,6 +183,8 @@ struct EditorDocument: Codable, Equatable {
                 inserted[i].kind = .list(listKind, depth)
             }
         }
+        // 图片段落恒为正文（EditorSpec §8.2）：纯附件段不继承落点的列表/标题/代码格式。
+        for i in inserted.indices where inserted[i].isAttachmentOnly { inserted[i].kind = .body }
         paragraphs.replaceSubrange(start.index...end.index, with: inserted)
         assets.merge(fragment.assets) { _, new in new }
         let newMap = PositionMap(self)
