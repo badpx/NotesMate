@@ -267,10 +267,21 @@ final class EditorAppKitTests: XCTestCase {
         let layout = try XCTUnwrap(view.layoutManager as? EditorLayoutManager)
         layout.ensureLayout(for: view.textContainer!)
         let line = layout.lineFragmentRect(forGlyphAt: 0, effectiveRange: nil).offsetBy(dx: view.textContainerOrigin.x, dy: view.textContainerOrigin.y)
-        let rect = try XCTUnwrap(layout.selectionBackgroundRects([line], selectedGlyphs: NSRange(location: 0, length: 1), origin: view.textContainerOrigin).first)
+        // 选中图片不再填充背景（改由 drawGlyphs 描边），附件区间被完全扣除。
+        XCTAssertTrue(layout.selectionBackgroundRects([line], selectedGlyphs: NSRange(location: 0, length: 1),
+                                                      origin: view.textContainerOrigin).isEmpty)
         let attachment = view.textStorage!.attribute(.attachment, at: 0, effectiveRange: nil) as! NSTextAttachment
-        XCTAssertEqual(rect.height, attachment.bounds.height)
-        XCTAssertEqual(rect.midY, line.minY + layout.location(forGlyphAt: 0).y - attachment.bounds.midY, accuracy: 0.01)
+        let border = try XCTUnwrap(layout.selectionBorderRects(selectedGlyphs: NSRange(location: 0, length: 1),
+                                                               origin: view.textContainerOrigin).first)
+        XCTAssertEqual(border.height, attachment.bounds.height, accuracy: 0.01)
+        XCTAssertEqual(border.width, attachment.bounds.width, accuracy: 0.01)
+        // 描边框 == 附件字形的实际绘制包围矩形（四边对称贴着图片边缘）。
+        let drawn = layout.boundingRect(forGlyphRange: NSRange(location: 0, length: 1), in: view.textContainer!)
+            .offsetBy(dx: view.textContainerOrigin.x, dy: view.textContainerOrigin.y)
+        XCTAssertEqual(border, drawn)
+        // 未选中附件时没有描边框。
+        XCTAssertTrue(layout.selectionBorderRects(selectedGlyphs: NSRange(location: 1, length: 0),
+                                                  origin: view.textContainerOrigin).isEmpty)
 
         bridge.load(.plain("第一行\n第二行\n第三行"))
         layout.ensureLayout(for: view.textContainer!)
@@ -278,6 +289,34 @@ final class EditorAppKitTests: XCTestCase {
         let split = layout.selectionBackgroundRects([merged], selectedGlyphs: NSRange(location: 0, length: bridge.document.length), origin: view.textContainerOrigin)
         XCTAssertEqual(split.count, 3)
         XCTAssertTrue(split.allSatisfy { $0.height == split[0].height })
+    }
+
+    /// 图文混排整行选中：文字部分保留选区背景，附件区间（含其后的换行区）被扣除，图片只留描边。
+    func testSelectionCarvesAttachmentSpansFromBackground() throws {
+        let image = NSImage(size: NSSize(width: 40, height: 40))
+        image.lockFocus(); NSColor.blue.setFill(); NSRect(x: 0, y: 0, width: 40, height: 40).fill(); image.unlockFocus()
+        guard let asset = ClipboardCodec.imageAsset(image) else { return XCTFail("asset") }
+        let id = UUID()
+        bridge.load(EditorDocument(paragraphs: [Paragraph(runs: [InlineRun(text: "前"), .image(id)])], assets: [id: asset]))
+        let layout = try XCTUnwrap(view.layoutManager as? EditorLayoutManager)
+        layout.ensureLayout(for: view.textContainer!)
+        let all = NSRange(location: 0, length: bridge.document.length)
+        let glyphs = layout.glyphRange(forCharacterRange: all, actualCharacterRange: nil)
+        let line = layout.lineFragmentRect(forGlyphAt: 0, effectiveRange: nil)
+            .offsetBy(dx: view.textContainerOrigin.x, dy: view.textContainerOrigin.y)
+        let rects = layout.selectionBackgroundRects([line], selectedGlyphs: glyphs, origin: view.textContainerOrigin)
+        let textBounds = layout.boundingRect(forGlyphRange: layout.glyphRange(forCharacterRange: NSRange(location: 0, length: 1),
+                                                                              actualCharacterRange: nil),
+                                             in: view.textContainer!).offsetBy(dx: view.textContainerOrigin.x, dy: view.textContainerOrigin.y)
+        let imageBounds = try XCTUnwrap(layout.selectionBorderRects(selectedGlyphs: glyphs, origin: view.textContainerOrigin).first)
+        // 只剩文字区一段背景，右缘不超过图片左缘；图片右侧（换行区）无残留色带。
+        XCTAssertEqual(rects.count, 1)
+        XCTAssertEqual(rects[0].minX, textBounds.minX, accuracy: 0.01)
+        XCTAssertLessThanOrEqual(rects[0].maxX, imageBounds.minX + 0.01)
+        // 仅选中图片时整行无背景、只有描边框。
+        let imageGlyphs = layout.glyphRange(forCharacterRange: NSRange(location: 1, length: 1), actualCharacterRange: nil)
+        XCTAssertTrue(layout.selectionBackgroundRects([line], selectedGlyphs: imageGlyphs, origin: view.textContainerOrigin).isEmpty)
+        XCTAssertEqual(layout.selectionBorderRects(selectedGlyphs: imageGlyphs, origin: view.textContainerOrigin).count, 1)
     }
 
     /// Selection crossing list items must start at each line's text start, never bleed
@@ -322,6 +361,49 @@ final class EditorAppKitTests: XCTestCase {
         XCTAssertEqual(bridge.state.session.selection, NSRange(location: 2, length: 0))
         view.redo(nil)
         XCTAssertEqual(bridge.document.text, "前文\n\u{FFFC}\n\u{FFFC}\n后文")
+        assertProjection()
+    }
+
+    /// 图片段恒为正文（EditorSpec §8.2）：列表项任意落点插入图片，图片独立成正文行，
+    /// 列表原文本行的格式保持正确；粘贴与工具栏按钮两条路径一致。
+    func testImageInsertionIntoListBreaksOutOfList() {
+        let image = NSImage(size: NSSize(width: 20, height: 20))
+        image.lockFocus()
+        NSColor.green.setFill()
+        NSRect(x: 0, y: 0, width: 20, height: 20).fill()
+        image.unlockFocus()
+        let cases: [(Int, [BlockKind], String)] = [
+            // (光标落点, 期望 kind 序列, 期望文本) —— 文档为单个无序列表项 "条目"
+            (0, [.body, .list(.unordered, 1)], "\u{FFFC}\n条目"),       // 行首
+            (1, [.list(.unordered, 1), .body, .list(.unordered, 1)], "条\n\u{FFFC}\n目"), // 中间
+            (2, [.list(.unordered, 1), .body], "条目\n\u{FFFC}"),       // 行尾
+        ]
+        let board = NSPasteboard.withUniqueName()
+        defer { board.releaseGlobally() }
+        board.setData(NotesSaver.pngData(for: image), forType: .png)
+        for (offset, kinds, text) in cases {
+            for paste in [false, true] {
+                bridge.load(EditorDocument(paragraphs: [
+                    Paragraph(kind: .list(.unordered, 1), runs: [InlineRun(text: "条目")])]))
+                bridge.select(NSRange(location: offset, length: 0))
+                if paste { bridge.paste(from: board) } else { bridge.insertImages([image]) }
+                XCTAssertEqual(bridge.document.paragraphs.map(\.kind), kinds, "落点 \(offset) paste=\(paste)")
+                XCTAssertEqual(bridge.document.text, text, "落点 \(offset) paste=\(paste)")
+                let html = HTMLExporter.export(bridge.document).bodyHTML
+                XCTAssertTrue(html.contains("<div>\(HTMLExporter.imagePlaceholder(0))</div>"))
+                XCTAssertFalse(html.contains("<li>\(HTMLExporter.imagePlaceholder(0))"))
+                assertProjection()
+                view.undo(nil)
+                XCTAssertEqual(bridge.document.text, "条目")
+            }
+        }
+        // 空列表项：图片占据该行成为正文；连续多张各自独立行
+        bridge.load(EditorDocument())
+        bridge.execute(.list(.ordered))
+        bridge.insertImages([image, image])
+        XCTAssertEqual(bridge.document.paragraphs.map(\.kind), [.body, .body])
+        XCTAssertEqual(bridge.document.text, "\u{FFFC}\n\u{FFFC}")
+        XCTAssertEqual(bridge.document.assetOrder.count, 2)
         assertProjection()
     }
 
@@ -1191,7 +1273,8 @@ final class EditorAppKitTests: XCTestCase {
         image.lockFocus(); NSColor.orange.setFill(); NSRect(x: 0, y: 0, width: 30, height: 80).fill(); image.unlockFocus()
         bridge.execute(.list(.ordered)); view.insertTab(nil)
         bridge.insertImages([image]); view.insertNewline(nil)
-        XCTAssertEqual(bridge.document.paragraphs.map(\.kind), [.list(.ordered, 2), .list(.ordered, 2)])
+        // 图片段恒为正文（EditorSpec §8.2）：空列表项插图后成为正文行，Enter 续正文。
+        XCTAssertEqual(bridge.document.paragraphs.map(\.kind), [.body, .body])
         XCTAssertFalse(bridge.document.paragraphs[0].isEmpty)
         XCTAssertTrue(bridge.document.paragraphs[1].isEmpty)
         view.insertNewline(nil) // Keep a lower-depth empty item in the copied fragment.

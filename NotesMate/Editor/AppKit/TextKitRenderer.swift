@@ -67,6 +67,57 @@ final class EditorLayoutManager: NSLayoutManager {
         }
     }
 
+    override func drawGlyphs(forGlyphRange glyphsToShow: NSRange, at origin: NSPoint) {
+        super.drawGlyphs(forGlyphRange: glyphsToShow, at: origin)
+        guard let view = textContainers.first?.textView as? EditorTextView,
+              view.selectedRange().length > 0 else { return }
+        let selectedGlyphs = glyphRange(forCharacterRange: view.selectedRange(), actualCharacterRange: nil)
+        let rects = selectionBorderRects(selectedGlyphs: selectedGlyphs, origin: origin)
+        guard !rects.isEmpty else { return }
+        // 选中附件画一圈选中色描边（EditorSpec §6 选区规则），取代图片底部/右侧的不对称背景。
+        let color = view.selectedTextAttributes[.backgroundColor] as? NSColor ?? .selectedTextBackgroundColor
+        color.setStroke()
+        for rect in rects {
+            let path = NSBezierPath(roundedRect: rect.insetBy(dx: 1.5, dy: 1.5), xRadius: 4, yRadius: 4)
+            path.lineWidth = 3
+            path.stroke()
+        }
+    }
+
+    /// 选区覆盖的附件字形的描边框几何（view 坐标）。图片段恒独占行，边框即附件包围矩形。
+    func selectionBorderRects(selectedGlyphs: NSRange, origin: NSPoint) -> [NSRect] {
+        guard let view = textContainers.first?.textView as? EditorTextView,
+              let container = view.textContainer, let storage = view.textStorage,
+              selectedGlyphs.length > 0 else { return [] }
+        let characters = NSIntersectionRange(characterRange(forGlyphRange: selectedGlyphs, actualGlyphRange: nil),
+                                             NSRange(location: 0, length: storage.length))
+        guard characters.length > 0 else { return [] }
+        var rects: [NSRect] = []
+        storage.enumerateAttribute(.attachment, in: characters) { value, range, _ in
+            guard value != nil else { return }
+            let glyphs = self.glyphRange(forCharacterRange: range, actualCharacterRange: nil)
+            rects.append(self.boundingRect(forGlyphRange: glyphs, in: container).offsetBy(dx: origin.x, dy: origin.y))
+        }
+        return rects
+    }
+
+    /// 附件字符区间的横向缝隙（view 坐标 x 区间 + 字符范围），供选区背景避开图片——图片选中态只显示描边。
+    private func attachmentGaps(in glyphs: NSRange, container: NSTextContainer,
+                                origin: NSPoint) -> [(minX: CGFloat, maxX: CGFloat, chars: NSRange)] {
+        guard let storage = textContainers.first?.textView?.textStorage else { return [] }
+        let characters = NSIntersectionRange(characterRange(forGlyphRange: glyphs, actualGlyphRange: nil),
+                                             NSRange(location: 0, length: storage.length))
+        guard characters.length > 0 else { return [] }
+        var gaps: [(CGFloat, CGFloat, NSRange)] = []
+        storage.enumerateAttribute(.attachment, in: characters) { value, range, _ in
+            guard value != nil else { return }
+            let bounds = self.boundingRect(forGlyphRange: self.glyphRange(forCharacterRange: range, actualCharacterRange: nil),
+                                           in: container).offsetBy(dx: origin.x, dy: origin.y)
+            gaps.append((bounds.minX, bounds.maxX, range))
+        }
+        return gaps
+    }
+
     /// 逐行选区几何：水平范围取「该行字形 ∩ 选区」的字形包围矩形，而不是行片段左缘——
     /// AppKit 原生矩形在选区含行首/换行符时会延伸到片段左缘（缩进/排水区被涂色），
     /// 列表与代码块内容必须精确到文字起点。选中到行尾（含换行符）保留原生「延伸到行右缘」；
@@ -83,15 +134,18 @@ final class EditorLayoutManager: NSLayoutManager {
             // AppKit can combine adjacent full-width selections into one tall rectangle.
             let fragments = lines.filter { min($0.rect.maxY, rect.maxY) > max($0.rect.minY, rect.minY) }
             guard !fragments.isEmpty else { return [rect] }
-            return fragments.map { line in
+            return fragments.flatMap { line -> [NSRect] in
                 var minX = rect.minX
                 var maxX = rect.maxX
+                var gaps: [(minX: CGFloat, maxX: CGFloat, chars: NSRange)] = []
                 let clipped = NSIntersectionRange(line.glyphs, selectedGlyphs)
                 if clipped.length > 0 {
                     let bounds = boundingRect(forGlyphRange: clipped, in: container)
                         .offsetBy(dx: origin.x, dy: origin.y)
                     minX = bounds.minX
                     maxX = bounds.maxX
+                    // 附件字符区间不留选区背景（选中图片以描边表示，见 drawGlyphs）。
+                    gaps = attachmentGaps(in: clipped, container: container, origin: origin)
                     if let storage = view.textStorage,
                        NSMaxRange(clipped) == NSMaxRange(line.glyphs) {
                         // 选区覆盖到该行末尾时保留原生「延伸到行右缘」：行末是换行符，
@@ -116,7 +170,34 @@ final class EditorLayoutManager: NSLayoutManager {
                 }
                 let probe = NSRect(x: minX, y: line.rect.minY, width: maxX - minX, height: line.rect.height)
                 let caret = view.insertionPointDrawingRect(probe)
-                return NSRect(x: minX, y: caret.minY, width: maxX - minX, height: caret.height)
+                // 行尾（不含换行符）是附件时，把最右附件缝隙延伸到行右缘，吞掉换行区——
+                // 否则选中图片时右侧仍会残留一条背景色带。
+                if let storage = view.textStorage, !gaps.isEmpty {
+                    let lineCharacters = NSIntersectionRange(
+                        characterRange(forGlyphRange: line.glyphs, actualGlyphRange: nil),
+                        NSRange(location: 0, length: storage.length))
+                    if lineCharacters.length > 0 {
+                        let lineText = (storage.string as NSString).substring(with: lineCharacters)
+                        let contentEnd = NSMaxRange(lineCharacters) - (lineText.hasSuffix("\n") ? 1 : 0)
+                        if NSMaxRange(gaps[gaps.count - 1].chars) == contentEnd {
+                            gaps[gaps.count - 1].maxX = maxX
+                        }
+                    }
+                }
+                // 横向扣除附件区间：图文混排选中时文字部分保留背景，图片部分只留描边。
+                var spans: [(CGFloat, CGFloat)] = [(minX, maxX)]
+                for gap in gaps.sorted(by: { $0.0 < $1.0 }) {
+                    spans = spans.flatMap { span -> [(CGFloat, CGFloat)] in
+                        guard gap.1 > span.0, gap.0 < span.1 else { return [span] }
+                        var out: [(CGFloat, CGFloat)] = []
+                        if gap.0 > span.0 { out.append((span.0, min(gap.0, span.1))) }
+                        if gap.1 < span.1 { out.append((max(gap.1, span.0), span.1)) }
+                        return out
+                    }
+                }
+                return spans.filter { $0.1 - $0.0 > 0.5 }.map {
+                    NSRect(x: $0.0, y: caret.minY, width: $0.1 - $0.0, height: caret.height)
+                }
             }
         }
     }
