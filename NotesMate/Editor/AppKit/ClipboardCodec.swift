@@ -54,8 +54,19 @@ enum ClipboardCodec {
         pasteboard.clearContents()
         if let data = try? JSONEncoder().encode(Envelope(document: fragment)) { pasteboard.setData(data, forType: fragmentType) }
         let rendered = TextKitRenderer.render(fragment, exchange: true)
-        if let data = rendered.rtfd(from: NSRange(location: 0, length: rendered.length), documentAttributes: [:]) {
+        let full = NSRange(location: 0, length: rendered.length)
+        if let data = rendered.rtfd(from: full, documentAttributes: [:]) {
             pasteboard.setData(data, forType: .rtfd)
+        }
+        // 标准 RTF（public.rtf）给不支持 RTFD 的接收方（备忘录等）：RTF 不支持附件，
+        // 先剔除附件字符（RTFD 副本仍保留图片）。
+        let textOnly = NSMutableAttributedString(attributedString: rendered)
+        let string = textOnly.string as NSString
+        for i in stride(from: string.length - 1, through: 0, by: -1) where string.character(at: i) == 0xFFFC {
+            textOnly.replaceCharacters(in: NSRange(location: i, length: 1), with: "")
+        }
+        if let data = textOnly.rtf(from: NSRange(location: 0, length: textOnly.length), documentAttributes: [:]) {
+            pasteboard.setData(data, forType: .rtf)
         }
         pasteboard.setString(fragment.text.replacingOccurrences(of: "\u{FFFC}", with: ""), forType: .string)
     }

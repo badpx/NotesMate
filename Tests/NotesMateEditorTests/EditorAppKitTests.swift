@@ -1389,6 +1389,70 @@ final class EditorAppKitTests: XCTestCase {
         XCTAssertGreaterThanOrEqual(end.maxY, editor.frame.height - 1)
     }
 
+    /// 复制到外部编辑器：write 必须同时输出 RTFD 与标准 RTF，且二者解码后保留
+    /// 加粗/斜体/下划线/删除线、列表（disc/decimal + 层级）和标题字号（粗体 22pt）。
+    func testCopyPreservesRichFormattingForExternalEditors() throws {
+        let doc = EditorDocument(paragraphs: [
+            Paragraph(runs: [InlineRun(text: "Bold粗体", style: InlineStyle(marks: [.bold]))]),
+            Paragraph(runs: [InlineRun(text: "Italic斜体", style: InlineStyle(marks: [.italic]))]),
+            Paragraph(runs: [InlineRun(text: "Under下划线", style: InlineStyle(marks: [.underline]))]),
+            Paragraph(runs: [InlineRun(text: "Strike删除线", style: InlineStyle(marks: [.strike]))]),
+            Paragraph(kind: .list(.unordered, 1), runs: [InlineRun(text: "无序一")]),
+            Paragraph(kind: .list(.unordered, 2), runs: [InlineRun(text: "无序二")]),
+            Paragraph(kind: .list(.ordered, 1), runs: [InlineRun(text: "有序一")]),
+            Paragraph(kind: .heading(1), runs: [InlineRun(text: "标题一")]),
+        ])
+        let board = NSPasteboard.withUniqueName()
+        defer { board.releaseGlobally() }
+        ClipboardCodec.write(doc, to: board)
+        for (type, docType) in [(NSPasteboard.PasteboardType.rtfd, NSAttributedString.DocumentType.rtfd),
+                                (.rtf, .rtf)] {
+            let data = try XCTUnwrap(board.data(forType: type), "\(type.rawValue) 缺失")
+            let decoded = try XCTUnwrap(try? NSAttributedString(data: data, options: [.documentType: docType],
+                                                                documentAttributes: nil), "\(type.rawValue) 解码失败")
+            func attrs(of substring: String, file: StaticString = #filePath, line: UInt = #line) -> [NSAttributedString.Key: Any] {
+                let range = (decoded.string as NSString).range(of: substring)
+                XCTAssertNotEqual(range.location, NSNotFound, "\(substring) 缺失", file: file, line: line)
+                return range.location == NSNotFound ? [:] : decoded.attributes(at: range.location, effectiveRange: nil)
+            }
+            func traits(of substring: String) -> NSFontTraitMask {
+                (attrs(of: substring)[.font] as? NSFont).map { NSFontManager.shared.traits(of: $0) } ?? []
+            }
+            XCTAssertTrue(traits(of: "Bold粗体").contains(.boldFontMask), "\(type.rawValue)")
+            XCTAssertTrue(traits(of: "Italic斜体").contains(.italicFontMask), "\(type.rawValue)")
+            XCTAssertNotNil(attrs(of: "Under下划线")[.underlineStyle], "\(type.rawValue)")
+            XCTAssertNotNil(attrs(of: "Strike删除线")[.strikethroughStyle], "\(type.rawValue)")
+            let l1 = (attrs(of: "无序一")[.paragraphStyle] as? NSParagraphStyle)?.textLists
+            XCTAssertEqual(l1?.count, 1, "\(type.rawValue)")
+            XCTAssertEqual(l1?.first?.markerFormat, .disc, "\(type.rawValue)")
+            XCTAssertEqual((attrs(of: "无序二")[.paragraphStyle] as? NSParagraphStyle)?.textLists.count, 2, "\(type.rawValue)")
+            XCTAssertEqual((attrs(of: "有序一")[.paragraphStyle] as? NSParagraphStyle)?.textLists.first?.markerFormat, .decimal, "\(type.rawValue)")
+            let heading = attrs(of: "标题一")
+            XCTAssertEqual((heading[.font] as? NSFont)?.pointSize, 22, "\(type.rawValue)")
+            XCTAssertTrue(traits(of: "标题一").contains(.boldFontMask), "\(type.rawValue)")
+        }
+        // 含图片段：RTF 副本剔除附件字符，RTFD 保留附件。
+        let image = NSImage(size: NSSize(width: 20, height: 20))
+        image.lockFocus(); NSColor.green.setFill(); NSRect(x: 0, y: 0, width: 20, height: 20).fill(); image.unlockFocus()
+        let asset = try XCTUnwrap(ClipboardCodec.imageAsset(image))
+        let id = UUID()
+        ClipboardCodec.write(EditorDocument(paragraphs: [Paragraph(runs: [.image(id)])], assets: [id: asset]), to: board)
+        let rtf = try XCTUnwrap(try? NSAttributedString(data: XCTUnwrap(board.data(forType: .rtf)),
+                                                        options: [.documentType: NSAttributedString.DocumentType.rtf],
+                                                        documentAttributes: nil))
+        XCTAssertFalse(rtf.string.contains("\u{FFFC}"))
+        let rtfd = try XCTUnwrap(try? NSAttributedString(data: XCTUnwrap(board.data(forType: .rtfd)),
+                                                         options: [.documentType: NSAttributedString.DocumentType.rtfd],
+                                                         documentAttributes: nil))
+        XCTAssertNotNil(rtfd.attribute(.attachment, at: 0, effectiveRange: nil))
+        // 自身往返仍优先读自定义片段：kind、文本、行内样式完全保留。
+        ClipboardCodec.write(doc, to: board)
+        let (fragment, _) = try XCTUnwrap(ClipboardCodec.read(board))
+        XCTAssertEqual(fragment.paragraphs.map(\.kind), doc.paragraphs.map(\.kind))
+        XCTAssertEqual(fragment.text, doc.text)
+        XCTAssertEqual(fragment.paragraphs[0].runs[0].style.marks, [.bold])
+    }
+
     func testEightLevelListsAndClipboardRoundTrip() throws {
         let expected = ["●", "○", "◆", "◇", "■", "□", "▲", "△"]
         for kind in [ListKind.unordered, .ordered] {

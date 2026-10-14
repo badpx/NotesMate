@@ -244,8 +244,11 @@ enum TextKitRenderer {
             style.headIndent = CGFloat(list.depth) * 22
             style.firstLineHeadIndent = style.headIndent
             if includeNativeLists {
-                style.textLists = (1...list.depth).map { depth in
-                    NSTextList(markerFormat: list.kind == .ordered ? .decimal : NSTextList.MarkerFormat(rawValue: ListResolver.unorderedMarkers[depth - 1]), options: 0)
+                style.textLists = (1...list.depth).map { _ in
+                    // 交换渲染必须用 RTF 可序列化的标准标记（自定义 ●/○ 等 markerFormat
+                    // 会被 RTF/RTFD 静默丢弃，外部编辑器读不到列表）；编辑器内标记由
+                    // ListMarkerRenderer 自绘，不走这里。
+                    NSTextList(markerFormat: list.kind == .ordered ? .decimal : .disc, options: 0)
                 }
             }
         }
@@ -271,7 +274,15 @@ enum TextKitRenderer {
             .font: font(for: style, block: block), .foregroundColor: exchange ? NSColor.textColor : textColor,
             .paragraphStyle: paragraphStyle(block, includeNativeLists: exchange),
         ]
-        if style.marks.contains(.italic) { result[.obliqueness] = 0.25 }
+        // 编辑器内斜体用 obliqueness 合成（中文也能倾斜）；交换渲染必须用真实 italic
+        // 字体 trait——obliqueness 不是字体属性，RTF/RTFD 序列化会静默丢弃。
+        if style.marks.contains(.italic) {
+            if exchange, let base = result[.font] as? NSFont {
+                result[.font] = NSFontManager.shared.convert(base, toHaveTrait: .italicFontMask)
+            } else {
+                result[.obliqueness] = 0.25
+            }
+        }
         if style.marks.contains(.underline) { result[.underlineStyle] = NSUnderlineStyle.single.rawValue }
         if style.marks.contains(.strike) { result[.strikethroughStyle] = NSUnderlineStyle.single.rawValue }
         if !exchange {
