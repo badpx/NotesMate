@@ -102,6 +102,7 @@ enum ClipboardCodec {
             // 标题档位（EditorSpec §8）：段落首个文本 run 粗体且 ≥21px → 标题 1、≥17px → 标题 2；
             // 等宽与其他字号一律归一正文。列表 kind 优先（备忘录列表项不会有标题字号）。
             var headingLevel: Int?
+            var inspectedFirstTextRun = false
             attributed.enumerateAttributes(in: NSRange(location: location, length: contentLength)) { attributes, subrange, _ in
                 if let attachment = attributes[.attachment] as? NSTextAttachment {
                     let image = attachment.image ?? attachment.fileWrapper?.regularFileContents.flatMap(NSImage.init(data:)) ?? attachment.contents.flatMap(NSImage.init(data:))
@@ -118,8 +119,11 @@ enum ClipboardCodec {
                 if traits.contains(.italicFontMask) || ((attributes[.obliqueness] as? NSNumber)?.doubleValue ?? 0) != 0 { marks.insert(.italic) }
                 if ((attributes[.underlineStyle] as? NSNumber)?.intValue ?? 0) != 0 { marks.insert(.underline) }
                 if ((attributes[.strikethroughStyle] as? NSNumber)?.intValue ?? 0) != 0 { marks.insert(.strike) }
-                if headingLevel == nil, !mono, traits.contains(.boldFontMask) {
-                    if font.pointSize >= 21 { headingLevel = 1 } else if font.pointSize >= 17 { headingLevel = 2 }
+                if !inspectedFirstTextRun {
+                    inspectedFirstTextRun = true
+                    if !mono, traits.contains(.boldFontMask) {
+                        if font.pointSize >= 21 { headingLevel = 1 } else if font.pointSize >= 17 { headingLevel = 2 }
+                    }
                 }
                 paragraph.runs.append(InlineRun(text: string.substring(with: subrange), style: InlineStyle(marks: marks, font: mono ? FontIntent(size: 14, monospaced: true) : nil)))
             }
@@ -145,34 +149,20 @@ enum ClipboardCodec {
         return result
     }
 
-    /// 剥离列表段落行首的标记符前缀（可选空白 + •◦▪· 或数字编号 1. 或 -/* + 可选空白），
+    /// 仅剥离列表段落行首由制表符包围的序列化标记，保留普通正文前缀，
     /// 按 UTF-16 长度从 runs 头部删除，保留其余 run 样式。
     private static func stripListMarkerPrefix(_ paragraph: inout Paragraph) {
         let text = paragraph.text as NSString
-        var index = 0
-        func isSpace(_ i: Int) -> Bool { [UInt16(9), 32].contains(text.character(at: i)) }
-        while index < text.length, isSpace(index) { index += 1 }
-        guard index < text.length else { return }  // 纯空白：不动
-        var end = index
-        let markers = CharacterSet(charactersIn: "•◦▪·")
-        if let scalar = Unicode.Scalar(text.character(at: end)), markers.contains(scalar) {
-            end += 1
-        } else {
-            var digitEnd = end
-            while digitEnd < text.length,
-                  CharacterSet.decimalDigits.contains(Unicode.Scalar(text.character(at: digitEnd))!) {
-                digitEnd += 1
-            }
-            if digitEnd > end, digitEnd < text.length, text.character(at: digitEnd) == 46 {
-                end = digitEnd + 1  // "1." / "12."
-            } else if [UInt16(45), 42].contains(text.character(at: end)) {
-                end += 1  // "-" / "*"
-            } else {
-                return  // 无标记前缀
-            }
-        }
-        while end < text.length, isSpace(end) { end += 1 }
-        guard end > 0 else { return }
+        // Only strip the tab-delimited marker emitted by AppKit's HTML/RTF importer.
+        // A list attribute alone does not make a literal prefix (e.g. -20 or 1.5) a marker.
+        guard text.length >= 3, text.character(at: 0) == 9 else { return }
+        let markerEnd = text.range(of: "\t", options: [], range: NSRange(location: 1, length: text.length - 1)).location
+        guard markerEnd != NSNotFound else { return }
+        let marker = text.substring(with: NSRange(location: 1, length: markerEnd - 1))
+        let bullets = ["•", "◦", "▪", "·", "-", "*"]
+        let numbered = marker.hasSuffix(".") && marker.count > 1 && marker.dropLast().utf8.allSatisfy { (48...57).contains($0) }
+        guard bullets.contains(marker) || numbered else { return }
+        let end = markerEnd + 1
         var remaining = end
         var runs = paragraph.runs
         while remaining > 0, !runs.isEmpty {

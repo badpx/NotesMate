@@ -31,7 +31,11 @@ final class DraftStore {
     private let queue = DispatchQueue(label: "NotesMate.DraftStore")
     private let lock = NSLock()
     private var generation: UInt64 = 0
-    private(set) var lastError: Error?
+    private var storedError: Error?
+    private(set) var lastError: Error? {
+        get { lock.lock(); defer { lock.unlock() }; return storedError }
+        set { lock.lock(); storedError = newValue; lock.unlock() }
+    }
     private(set) var restoredSession: EditorSession?
     private var damagedSource = false
 
@@ -63,7 +67,7 @@ final class DraftStore {
         return nil
     }
 
-    func persist(_ document: EditorDocument, session: EditorSession? = nil) {
+    func persist(_ document: EditorDocument, session: EditorSession? = nil, completion: ((Error?) -> Void)? = nil) {
         lock.lock(); generation &+= 1; let token = generation; lock.unlock()
         var pruned = document
         pruned.pruneAssets()
@@ -87,6 +91,11 @@ final class DraftStore {
                 }
                 lastError = nil
             } catch { lastError = error }
+            let error = lastError
+            DispatchQueue.main.async { [self] in
+                lock.lock(); let current = token == generation; lock.unlock()
+                if current { completion?(error) }
+            }
         }
     }
 

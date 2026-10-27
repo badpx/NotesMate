@@ -57,6 +57,17 @@ struct NoteEditorView: View {
                 .background(Color(nsColor: EditorAppearance.canvas))
                 .overlay { EditorTipOverlay(tips: model.tips) }
             Color(nsColor: EditorAppearance.separator).frame(height: 1 / displayScale)
+            if model.draftPersistenceFailed {
+                HStack {
+                    Text(EditorLanguage.text("Draft could not be saved locally. Keep the app open to avoid losing changes."))
+                        .font(.system(size: 11))
+                    Spacer()
+                    Button(EditorLanguage.text("Retry")) { model.persistDraft() }
+                }
+                .padding(8)
+                .foregroundStyle(Color(nsColor: EditorAppearance.title))
+                .accessibilityElement(children: .contain)
+            }
             toolbar
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)

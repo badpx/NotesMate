@@ -148,3 +148,7 @@
 "Website.footer" = "หน้าต่างเล็กๆ สำหรับไอเดียใหญ่ครั้งต่อไป";
 "Website.release" = "บันทึกประจำรุ่น";
 "Website.feedback" = "ข้อเสนอแนะ";
+
+/* Local draft persistence */
+"Draft could not be saved locally. Keep the app open to avoid losing changes." = "ไม่สามารถบันทึกฉบับร่างในเครื่องได้ โปรดเปิดแอปไว้เพื่อป้องกันการสูญเสียการเปลี่ยนแปลง";
+"Retry" = "ลองอีกครั้ง";

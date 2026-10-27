@@ -148,3 +148,7 @@
 "Website.footer" = "Jendela kecil. Untuk ide besar berikutnya.";
 "Website.release" = "Catatan rilis";
 "Website.feedback" = "Masukan";
+
+/* Local draft persistence */
+"Draft could not be saved locally. Keep the app open to avoid losing changes." = "Draf tidak dapat disimpan secara lokal. Biarkan aplikasi tetap terbuka agar perubahan tidak hilang.";
+"Retry" = "Coba lagi";

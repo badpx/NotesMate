@@ -148,3 +148,7 @@
 "Website.footer" = "Munting window. Para sa susunod mong malaking ideya.";
 "Website.release" = "Mga tala sa release";
 "Website.feedback" = "Magbigay ng puna";
+
+/* Local draft persistence */
+"Draft could not be saved locally. Keep the app open to avoid losing changes." = "Hindi na-save ang draft sa lokal na storage. Panatilihing bukas ang app upang hindi mawala ang mga pagbabago.";
+"Retry" = "Subukan muli";

@@ -148,3 +148,7 @@
 "Website.footer" = "Tetingkap kecil. Untuk idea besar seterusnya.";
 "Website.release" = "Nota keluaran";
 "Website.feedback" = "Maklum balas";
+
+/* Local draft persistence */
+"Draft could not be saved locally. Keep the app open to avoid losing changes." = "Draf tidak dapat disimpan secara setempat. Biarkan aplikasi terbuka supaya perubahan tidak hilang.";
+"Retry" = "Cuba lagi";

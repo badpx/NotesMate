@@ -13,6 +13,7 @@ final class NoteEditorModel: ObservableObject {
     private var hasDraft = false
     private(set) var recoveryMessage: String?
     @Published private(set) var isSaving = false
+    @Published private(set) var draftPersistenceFailed = false
     private static let saveQueue = DispatchQueue(label: "NotesMate.save", qos: .userInitiated)
 
     init(drafts: DraftStore = DraftStore(), restore: Bool = true, tips: EditorTipsController = EditorTipsController()) {
@@ -129,12 +130,22 @@ final class NoteEditorModel: ObservableObject {
     func persistDraft() {
         pendingPersist?.cancel(); pendingPersist = nil
         // During composition the bridge still exposes only the last committed document.
-        drafts.persist(bridge.document, session: bridge.state.session)
+        drafts.persist(bridge.document, session: bridge.state.session) { [weak self] error in
+            self?.draftPersistenceFailed = error != nil
+        }
     }
 
     func flushPendingPersist() {
         if pendingPersist != nil { persistDraft() }
         drafts.flush()
+        draftPersistenceFailed = drafts.lastError != nil
+    }
+
+    /// Retry the current snapshot and synchronously check the actual disk result before quitting.
+    func prepareToQuit() -> Bool {
+        persistDraft()
+        flushPendingPersist()
+        return !draftPersistenceFailed
     }
 
     deinit { pendingPersist?.cancel() }

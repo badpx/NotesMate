@@ -148,3 +148,7 @@
 "Website.footer" = "小さな窓に、次のひらめきを残そう。";
 "Website.release" = "リリースノート";
 "Website.feedback" = "フィードバック";
+
+/* Local draft persistence */
+"Draft could not be saved locally. Keep the app open to avoid losing changes." = "下書きをローカルに保存できませんでした。変更が失われないよう、アプリを開いたままにしてください。";
+"Retry" = "再試行";

@@ -62,6 +62,18 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
     }
 
+    func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
+        guard !panelController.prepareToQuit() else { return .terminateNow }
+        let alert = NSAlert()
+        alert.alertStyle = .warning
+        alert.messageText = EditorLanguage.text("Draft could not be saved locally. Keep the app open to avoid losing changes.")
+        alert.addButton(withTitle: EditorLanguage.text("Cancel"))
+        alert.addButton(withTitle: EditorLanguage.text("Quit NotesMate"))
+        alert.window.level = .statusBar
+        NSApp.activate(ignoringOtherApps: true)
+        return alert.runModal() == .alertFirstButtonReturn ? .terminateCancel : .terminateNow
+    }
+
     func applicationWillTerminate(_ notification: Notification) {
         for hotKey in hotKeys { UnregisterEventHotKey(hotKey) }
         if let hotKeyHandler { RemoveEventHandler(hotKeyHandler) }

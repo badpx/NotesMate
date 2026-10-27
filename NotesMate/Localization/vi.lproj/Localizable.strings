@@ -148,3 +148,7 @@
 "Website.footer" = "Cửa sổ nhỏ. Cho ý tưởng lớn tiếp theo.";
 "Website.release" = "Ghi chú phát hành";
 "Website.feedback" = "Góp ý";
+
+/* Local draft persistence */
+"Draft could not be saved locally. Keep the app open to avoid losing changes." = "Không thể lưu bản nháp trên máy. Hãy giữ ứng dụng mở để tránh mất các thay đổi.";
+"Retry" = "Thử lại";

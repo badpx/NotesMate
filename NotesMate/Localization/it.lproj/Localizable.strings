@@ -148,3 +148,7 @@
 "Website.footer" = "Una finestrella. Per la tua prossima grande idea.";
 "Website.release" = "Note di rilascio";
 "Website.feedback" = "Feedback";
+
+/* Local draft persistence */
+"Draft could not be saved locally. Keep the app open to avoid losing changes." = "Impossibile salvare la bozza in locale. Mantieni aperta l’app per non perdere le modifiche.";
+"Retry" = "Riprova";

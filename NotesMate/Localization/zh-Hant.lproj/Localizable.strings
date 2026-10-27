@@ -148,3 +148,7 @@
 "Website.footer" = "隨手一記，留住下一個好想法";
 "Website.release" = "更新記錄";
 "Website.feedback" = "意見回饋";
+
+/* Local draft persistence */
+"Draft could not be saved locally. Keep the app open to avoid losing changes." = "無法將草稿儲存至本機。請保持應用程式開啟，以免遺失變更。";
+"Retry" = "重試";

@@ -148,3 +148,7 @@
 "Website.footer" = "Une petite fenêtre. Pour votre prochaine grande idée.";
 "Website.release" = "Notes de version";
 "Website.feedback" = "Vos retours";
+
+/* Local draft persistence */
+"Draft could not be saved locally. Keep the app open to avoid losing changes." = "Impossible d’enregistrer le brouillon localement. Gardez l’application ouverte pour ne pas perdre vos modifications.";
+"Retry" = "Réessayer";
