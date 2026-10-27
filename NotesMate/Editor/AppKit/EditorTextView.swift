@@ -267,8 +267,25 @@ final class EditorTextView: NSTextView {
         // A newly created EOF caret can arrive with a rectangle above its extra line fragment.
         // For the active caret use its character position; selection backgrounds use geometry.
         if layout.numberOfGlyphs > 0, !usesExtraLine {
-            let glyph = index.map { layout.glyphIndexForCharacter(at: min($0, storage.length - 1)) }
-                ?? layout.glyphIndex(for: point, in: container)
+            var glyph: Int
+            if let index {
+                glyph = layout.glyphIndexForCharacter(at: min(index, storage.length - 1))
+                // At a soft wrap, the same insertion index belongs to either visual line.
+                // Keep the native affinity so the y coordinate agrees with AppKit's x.
+                if selectionAffinity == .upstream, index > 0, index < storage.length {
+                    let previousCharacter = (storage.string as NSString).character(at: index - 1)
+                    if ![UInt16(10), 13, 0x2028, 0x2029].contains(previousCharacter) {
+                        let previousGlyph = layout.glyphIndexForCharacter(at: index - 1)
+                        let previousLine = layout.lineFragmentRect(forGlyphAt: previousGlyph, effectiveRange: nil)
+                        let currentLine = layout.lineFragmentRect(forGlyphAt: glyph, effectiveRange: nil)
+                        if previousLine.minY != currentLine.minY { glyph = previousGlyph }
+                    }
+                }
+            } else {
+                // Erasing an old caret / painting a selection must use that rectangle's
+                // visual line, never the current selection or a hit test past its right edge.
+                glyph = layout.glyphIndex(for: NSPoint(x: container.lineFragmentPadding, y: point.y), in: container)
+            }
             if glyph < layout.numberOfGlyphs {
                 var lineRange = NSRange()
                 let line = layout.lineFragmentRect(forGlyphAt: glyph, effectiveRange: &lineRange)
