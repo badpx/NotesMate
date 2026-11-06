@@ -313,8 +313,28 @@ enum TextKitRenderer {
 
     static func render(_ document: EditorDocument, exchange: Bool = false) -> NSAttributedString {
         let output = NSMutableAttributedString(string: "")
+        var listStack: [(depth: Int, kind: ListKind, list: NSTextList)] = []
         for i in document.paragraphs.indices {
+            let start = output.length
             output.append(renderParagraph(document.paragraphs[i], assets: document.assets, separator: i < document.paragraphs.count - 1, exchange: exchange))
+            if exchange {
+                let kind = document.paragraphs[i].kind
+                let style = paragraphStyle(kind).mutableCopy() as! NSMutableParagraphStyle
+                if let item = kind.list {
+                    while let last = listStack.last, last.depth > item.depth { listStack.removeLast() }
+                    if let last = listStack.last, last.depth == item.depth, last.kind != item.kind { listStack.removeLast() }
+                    if listStack.last?.depth != item.depth {
+                        // Retain explicit indentation even when the document skips a level.
+                        // Existing ancestors keep their real kinds and shared list identities.
+                        for depth in (listStack.count + 1)...item.depth {
+                            listStack.append((depth, item.kind,
+                                NSTextList(markerFormat: item.kind == .ordered ? .decimal : .disc, options: 0)))
+                        }
+                    }
+                    style.textLists = listStack.map(\.list)
+                } else { listStack.removeAll() }
+                output.addAttribute(.paragraphStyle, value: style, range: NSRange(location: start, length: output.length - start))
+            }
         }
         if !exchange { applyParagraphLayout(document, to: output) }
         return output

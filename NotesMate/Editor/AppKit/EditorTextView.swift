@@ -85,8 +85,11 @@ final class EditorTextView: NSTextView {
     }
 
     override func unmarkText() {
-        super.unmarkText()
-        bridge?.finishComposition()
+        guard let bridge, bridge.isComposing else { super.unmarkText(); return }
+        // AppKit may remove and reinsert the candidate while unmarking. Reconcile
+        // only after the complete native operation, never its intermediate storage.
+        bridge.runNative { super.unmarkText() }
+        bridge.finishComposition()
     }
 
     override func insertNewline(_ sender: Any?) {

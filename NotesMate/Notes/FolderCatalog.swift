@@ -8,6 +8,18 @@ struct NotesFolder: Equatable {
 
 /// Enumerates Notes folders and persists the user's chosen save target.
 enum FolderCatalog {
+    struct Selection: Equatable {
+        let folder: NotesFolder?
+        let revision: UInt64
+    }
+    private static var selectionRevision: UInt64 = 0
+    static var selection: Selection { Selection(folder: target, revision: selectionRevision) }
+
+    /// Called on the main thread after a save, never from the AppleScript queue.
+    static func invalidate(_ captured: Selection) {
+        guard selection == captured else { return }
+        target = nil
+    }
     static func fetch(execute: (String) throws -> String = NotesSaver.runScript) throws -> [NotesFolder] {
         parse(try execute(catalogScript))
     }
@@ -66,9 +78,34 @@ enum FolderCatalog {
                                accountName: defaults.string(forKey: accountKey) ?? "")
         }
         set {
+            selectionRevision &+= 1
             defaults.set(newValue?.id, forKey: idKey)
             defaults.set(newValue?.name, forKey: nameKey)
             defaults.set(newValue?.accountName, forKey: accountKey)
         }
+    }
+}
+
+/// Main-thread request ordering and selection reconciliation, independent of SwiftUI.
+struct FolderRefreshState {
+    struct Request {
+        let generation: UInt64
+        let selection: FolderCatalog.Selection
+    }
+    private var generation: UInt64 = 0
+
+    mutating func begin() -> Request {
+        generation &+= 1
+        return Request(generation: generation, selection: FolderCatalog.selection)
+    }
+
+    func isCurrent(_ request: Request) -> Bool { request.generation == generation }
+
+    func reconcile(_ list: [NotesFolder], for request: Request) {
+        guard isCurrent(request), FolderCatalog.selection == request.selection,
+              let target = request.selection.folder else { return }
+        // Stable IDs survive account/folder renames; persist the current metadata too.
+        let updated = list.first { $0.id == target.id }
+        if updated != target { FolderCatalog.target = updated }
     }
 }

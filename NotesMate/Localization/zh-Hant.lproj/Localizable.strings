@@ -152,3 +152,5 @@
 /* Local draft persistence */
 "Draft could not be saved locally. Keep the app open to avoid losing changes." = "無法將草稿儲存至本機。請保持應用程式開啟，以免遺失變更。";
 "Retry" = "重試";
+
+"\nThe save result is unknown. Check Notes before retrying to avoid duplicates. Save started at {0}; destination: {1}." = "\n儲存結果未知。請先檢查備忘錄再重試，以免重複建立。儲存開始時間：{0}；目標：{1}。";

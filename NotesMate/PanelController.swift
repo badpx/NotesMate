@@ -268,6 +268,8 @@ final class PanelResizeHandler {
 
 final class PanelController {
     func prepareToQuit() -> Bool { model.prepareToQuit() }
+    var isSaving: Bool { model.isSaving }
+    func prepareToQuit(completion: @escaping (Bool) -> Void) { model.prepareToQuit(completion: completion) }
     private let model = NoteEditorModel()
     private let panel: NotePanel
     private let resizeHandler: PanelResizeHandler

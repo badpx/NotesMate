@@ -152,3 +152,5 @@
 /* Local draft persistence */
 "Draft could not be saved locally. Keep the app open to avoid losing changes." = "Não foi possível salvar o rascunho localmente. Mantenha o aplicativo aberto para não perder as alterações.";
 "Retry" = "Tentar novamente";
+
+"\nThe save result is unknown. Check Notes before retrying to avoid duplicates. Save started at {0}; destination: {1}." = "\nO resultado do salvamento é desconhecido. Confira o Notas antes de tentar novamente para evitar duplicatas. Início: {0}; destino: {1}.";

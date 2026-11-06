@@ -1058,6 +1058,9 @@ final class EditorAppKitTests: XCTestCase {
         }
         let native = NativeView(frame: NSRect(x: 0, y: 0, width: 300, height: 200))
         native.allowsUndo = true
+        // The test closes this transaction explicitly, so do not also schedule a run-loop close.
+        native.history.groupsByEvent = false
+        native.history.beginUndoGrouping()
         for c in "hello ** incomplete" {
             native.insertText(String(c), replacementRange: NSRange(location: NSNotFound, length: 0))
             type(String(c))

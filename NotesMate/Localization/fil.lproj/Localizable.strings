@@ -152,3 +152,5 @@
 /* Local draft persistence */
 "Draft could not be saved locally. Keep the app open to avoid losing changes." = "Hindi na-save ang draft sa lokal na storage. Panatilihing bukas ang app upang hindi mawala ang mga pagbabago.";
 "Retry" = "Subukan muli";
+
+"\nThe save result is unknown. Check Notes before retrying to avoid duplicates. Save started at {0}; destination: {1}." = "\nHindi matukoy ang resulta ng pag-save. Tingnan ang Notes bago subukang muli upang maiwasan ang mga duplicate. Nagsimula: {0}; destinasyon: {1}.";

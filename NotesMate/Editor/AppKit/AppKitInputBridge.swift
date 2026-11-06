@@ -9,6 +9,8 @@ final class AppKitInputBridge: NSObject, NSTextViewDelegate {
     let hooks = EditorHooks()
     private var dispatchKey: EditorKey?
     private var inputHookDepth = 0
+    /// Includes provisional/cancelled IME input, which need not change the document revision.
+    private(set) var inputGeneration: UInt64 = 0
     private var observedFormat: BlockKind = .body
 
     var hookContext: EditorHookContext {
@@ -42,7 +44,10 @@ final class AppKitInputBridge: NSObject, NSTextViewDelegate {
         dispatchKey = previous
     }
     private func beginInputHook() {
-        if inputHookDepth == 0 { hooks.emit(.beforeInput, context: hookContext) }
+        if inputHookDepth == 0 {
+            inputGeneration &+= 1
+            hooks.emit(.beforeInput, context: hookContext)
+        }
         inputHookDepth += 1
     }
     private func endInputHook(changed: Bool) {
@@ -126,7 +131,10 @@ final class AppKitInputBridge: NSObject, NSTextViewDelegate {
     func undoManager(for view: NSTextView) -> UndoManager? { history.manager }
 
     func load(_ document: EditorDocument, session: EditorSession? = nil, clearHistory: Bool = true) {
-        guard let valid = try? document.validated() else { return }
+        guard nativeDepth == 0, let valid = try? document.validated() else { return }
+        // Explicit document replacement ends the IME transaction before touching storage
+        // or removing undo actions (removeAllActions resets registration suppression).
+        commitComposition()
         let previous = state.document
         state = EditorSnapshot(document: valid, session: session ?? EditorSession())
         state.session.selection = PositionMap(valid).clamped(state.session.selection)
@@ -288,30 +296,49 @@ final class AppKitInputBridge: NSObject, NSTextViewDelegate {
         pendingBefore = nil; pendingRange = nil; structuralNative = false
     }
 
-    private func synchronizeNative(from before: EditorSnapshot) {
+    private func synchronizeNative(from before: EditorSnapshot, reconcileCompositionStyles: Bool = false) {
         guard let view = textView, let storage = view.textStorage else { return }
         let oldText = before.document.text as NSString
         let newText = storage.string as NSString
-        if !oldText.isEqual(to: storage.string) {
+        let sameText = oldText.isEqual(to: storage.string)
+        let compareAllStyles = reconcileCompositionStyles && sameText
+        if !sameText || pendingRange != nil || compareAllStyles {
             let delta: (NSRange, Int)
-            if let pendingRange, NSMaxRange(pendingRange) <= oldText.length {
+            if compareAllStyles {
+                delta = (NSRange(location: 0, length: oldText.length), newText.length)
+            } else if let pendingRange, NSMaxRange(pendingRange) <= oldText.length {
                 let insertedLength = newText.length - oldText.length + pendingRange.length
                 if insertedLength >= 0 && pendingRange.location + insertedLength <= newText.length { delta = (pendingRange, insertedLength) }
                 else { delta = Self.difference(oldText, newText) }
             } else { delta = Self.difference(oldText, newText) }
             let fragment = TextKitRenderer.decodeNative(storage.attributedSubstring(from: NSRange(location: delta.0.location, length: delta.1)), assets: before.document.assets)
             var next = before.document
-            next.replace(delta.0, with: fragment)
-            next.revision = state.document.revision &+ 1
-            state.document = next
-            positionMap = PositionMap(next)
-            listCache = ListResolver.resolve(next)
-            isApplying = true
-            history.withoutRegistration {
-                let map = PositionMap(next)
-                TextKitRenderer.decorate(next, indices: map.paragraphs(in: NSRange(location: delta.0.location, length: delta.1)), view: view)
+            if !compareAllStyles { next.replace(delta.0, with: fragment) }
+            if reconcileCompositionStyles {
+                // IME can change attributes on characters shared by the old/new text,
+                // including an unchanged prefix or suffix of a different candidate.
+                // Keep paragraph IDs and block kinds while reconciling all inline runs.
+                let native = compareAllStyles ? fragment : TextKitRenderer.decodeNative(storage, assets: before.document.assets)
+                for index in next.paragraphs.indices {
+                    next.paragraphs[index].runs = native.paragraphs[index].runs
+                }
             }
-            isApplying = false
+            // Replacement assigns fresh paragraph IDs; compare semantic content only.
+            let semanticChange = zip(next.paragraphs, before.document.paragraphs).contains {
+                $0.kind != $1.kind || $0.runs != $1.runs
+            } || next.paragraphs.count != before.document.paragraphs.count || next.assets != before.document.assets
+            if semanticChange {
+                next.revision = state.document.revision &+ 1
+                state.document = next
+                positionMap = PositionMap(next)
+                listCache = ListResolver.resolve(next)
+                isApplying = true
+                history.withoutRegistration {
+                    let map = PositionMap(next)
+                    TextKitRenderer.decorate(next, indices: map.paragraphs(in: NSRange(location: delta.0.location, length: delta.1)), view: view)
+                }
+                isApplying = false
+            }
         }
         state.session.selection = PositionMap(document).clamped(view.selectedRange())
         state.session.affinity = view.selectionAffinity.rawValue
@@ -372,6 +399,7 @@ final class AppKitInputBridge: NSObject, NSTextViewDelegate {
 
     func beginComposition() {
         guard compositionBefore == nil else { return }
+        inputGeneration &+= 1
         history.sealTyping(in: textView)
         compositionBefore = state
         compositionPresentation = nil
@@ -401,7 +429,7 @@ final class AppKitInputBridge: NSObject, NSTextViewDelegate {
         compositionBefore = nil
         compositionPresentation = nil
         pendingRange = nil
-        synchronizeNative(from: before)
+        synchronizeNative(from: before, reconcileCompositionStyles: true)
         history.manager.enableUndoRegistration()
         if state.document != before.document { history.register(before, name: EditorLanguage.text("Typing"), view: textView) }
         pendingBefore = nil
@@ -416,19 +444,30 @@ final class AppKitInputBridge: NSObject, NSTextViewDelegate {
         onSave?()
     }
 
+    func commitComposition() {
+        guard isComposing else { return }
+        textView?.unmarkText()
+        textView?.inputContext?.discardMarkedText()
+        finishComposition()
+    }
+
     func paste(from pasteboard: NSPasteboard, plainOnly: Bool = false) {
         guard !isComposing,
               let (fragment, preserve) = ClipboardCodec.read(pasteboard, plainOnly: plainOnly, style: state.session.insertionStyle) else { return }
-        if !fragment.assets.isEmpty, fragment.text.allSatisfy({ $0 == "\u{FFFC}" }) {
+        if !fragment.assets.isEmpty, fragment.paragraphs.allSatisfy(\.isAttachmentOnly) {
             insertImageFragment(fragment, name: EditorLanguage.text("Paste Image"))
             return
         }
         var insertion = fragment
         let padding = imageBoundaryPadding(for: state.session.selection)
-        if padding.before && insertion.paragraphs.first?.isEmpty == false {
+        let start = positionMap.position(at: state.session.selection.location)
+        let end = positionMap.position(at: NSMaxRange(state.session.selection))
+        let sourceStartsWithImage = insertion.paragraphs.first?.runs.first?.assetID != nil
+        let sourceEndsWithImage = insertion.paragraphs.last?.runs.last?.assetID != nil
+        if (padding.before || (sourceStartsWithImage && start.offset > 0)) && insertion.paragraphs.first?.isEmpty == false {
             insertion.paragraphs.insert(Paragraph(), at: 0)
         }
-        if padding.after && insertion.paragraphs.last?.isEmpty == false {
+        if (padding.after || (sourceEndsWithImage && end.offset < document.paragraphs[end.index].length)) && insertion.paragraphs.last?.isEmpty == false {
             insertion.paragraphs.append(Paragraph())
         }
         execute(.replace(state.session.selection, insertion, preserveBlocks: preserve), name: EditorLanguage.text("Paste"))

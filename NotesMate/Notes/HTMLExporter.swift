@@ -66,7 +66,7 @@ enum HTMLExporter {
     static func renderRuns(_ runs: [InlineRun], image: (UUID) -> String = { _ in "" }) -> String {
         runs.map { run in
             if let id = run.assetID { return image(id) }
-            var text = escape(run.text).replacingOccurrences(of: "\u{2028}", with: "<br>")
+            var text = preservingWhitespace(run.text)
             if run.style.marks.contains(.code) || run.style.font?.monospaced == true {
                 text = "<tt style=\"font-family:Courier;font-size:12px\">\(text)</tt>"
             }
@@ -82,5 +82,22 @@ enum HTMLExporter {
         text.replacingOccurrences(of: "&", with: "&amp;")
             .replacingOccurrences(of: "<", with: "&lt;")
             .replacingOccurrences(of: ">", with: "&gt;")
+    }
+
+    /// HTML collapses ordinary whitespace, including in <tt>. Encode boundary and
+    /// repeated spaces explicitly while retaining ordinary word-wrap opportunities.
+    /// Tabs export as four spaces, consistently in body, inline code and code blocks.
+    static func preservingWhitespace(_ text: String) -> String {
+        let characters = Array(text)
+        return characters.enumerated().map { index, character in
+            switch character {
+            case "\t": return String(repeating: "&nbsp;", count: 4)
+            case " ":
+                return index == 0 || index == characters.count - 1 || characters[index - 1] == " "
+                    || characters[index - 1] == "\u{2028}" || characters[index + 1] == "\u{2028}" ? "&nbsp;" : " "
+            case "\u{2028}": return "<br>"
+            default: return escape(String(character))
+            }
+        }.joined()
     }
 }

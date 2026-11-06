@@ -8,12 +8,27 @@ enum NotesSaver {
         let bodyHTML: String
         /// One image per occurrence, in the same order as HTMLExporter.imagePlaceholder.
         let images: [NSImage]
+        var target: FolderCatalog.Selection = .init(folder: nil, revision: 0)
     }
 
     enum SaveResult: Equatable {
         case success
+        case successUsingDefaultFolder
         case unauthorized(String)
         case failed(String)
+        case outcomeUnknown(String)
+
+        var succeeded: Bool { self == .success || self == .successUsingDefaultFolder }
+        var errorDetail: String? {
+            switch self {
+            case .success, .successUsingDefaultFolder: return nil
+            case .unauthorized(let detail), .failed(let detail), .outcomeUnknown(let detail): return detail
+            }
+        }
+        var needsAuthorization: Bool {
+            if case .unauthorized = self { return true }
+            return false
+        }
     }
 
     struct ScriptError: LocalizedError {
@@ -44,19 +59,22 @@ enum NotesSaver {
     }
 
     static func save(_ content: NoteContent) -> SaveResult {
-        save(content, execute: runScript)
+        save(content, execute: runScript, folderID: content.target.folder?.id)
     }
 
     /// Injection keeps automated failure tests out of the user's Notes database.
     static func save(_ content: NoteContent, execute: (String) throws -> String,
-                     folderID: String? = FolderCatalog.target?.id,
+                     folderID: String? = nil,
                      temporaryRoot: URL = FileManager.default.temporaryDirectory,
-                     verificationAttempts: Int = 20,
-                     onInvalidFolder: () -> Void = { FolderCatalog.target = nil }) -> SaveResult {
+                     verificationAttempts: Int = 20) -> SaveResult {
         let fm = FileManager.default
         let directory = temporaryRoot.appendingPathComponent("NotesMate-\(UUID().uuidString)", isDirectory: true)
         var preserveFiles = false
         var noteID: String?
+        var usedDefaultFolder = false
+        var creating = false
+        var missingNoteID = false
+        let started = ISO8601DateFormatter().string(from: Date())
         defer { if !preserveFiles { try? fm.removeItem(at: directory) } }
         do {
             var payloads: [Data] = []
@@ -74,16 +92,21 @@ enum NotesSaver {
             // On an ambiguous create error, retain sources rather than assuming no note exists.
             preserveFiles = !paths.isEmpty
             let id: String
+            creating = true
             do {
                 id = try execute(makeScript(bodyHTML: html.initial, folderID: folderID))
             } catch let error as ScriptError where error.number == -1728 && folderID != nil {
-                // The chosen folder was deleted or its account changed: forget it and
-                // retry once against the default folder.
-                onInvalidFolder()
+                // Retry once against the default folder. Report the fallback to the
+                // main-thread owner, which can conditionally invalidate its selection.
+                usedDefaultFolder = true
                 id = try execute(makeScript(bodyHTML: html.initial))
             }
-            guard !id.isEmpty else { throw ScriptError(number: 0, message: EditorLanguage.text("Notes did not return a note ID. Check whether the note was created.")) }
+            guard !id.isEmpty else {
+                missingNoteID = true
+                throw ScriptError(number: 0, message: EditorLanguage.text("Notes did not return a note ID. Check whether the note was created."))
+            }
             noteID = id
+            creating = false
             if !paths.isEmpty {
                 _ = try execute(attachmentScript(noteID: id, html: html.final, paths: paths))
                 let exports = paths.indices.map { directory.appendingPathComponent("verify-\($0).png") }
@@ -102,9 +125,16 @@ enum NotesSaver {
                 guard verified else { throw ScriptError(number: 0, message: EditorLanguage.text("Image verification failed. Your draft has been kept.")) }
             }
             preserveFiles = false
-            return .success
+            return usedDefaultFolder ? .successUsingDefaultFolder : .success
         } catch {
             var detail = error.localizedDescription
+            let unknown = missingNoteID || (creating && (error as? ScriptError)?.number == -1712)
+            if unknown {
+                let destination = usedDefaultFolder ? EditorLanguage.text("Default Folder")
+                    : content.target.folder.map { "\($0.accountName) / \($0.name) (\($0.id))" } ?? folderID ?? EditorLanguage.text("Default Folder")
+                detail += EditorLanguage.format("\nThe save result is unknown. Check Notes before retrying to avoid duplicates. Save started at {0}; destination: {1}.",
+                    started, destination)
+            }
             if let id = noteID {
                 do {
                     _ = try execute("with timeout of 10 seconds\ntell application \"Notes\" to delete note id \(quote(id))\nend timeout")
@@ -116,7 +146,7 @@ enum NotesSaver {
             if preserveFiles { detail += EditorLanguage.format("\nTemporary image files are kept at {0}", directory.path) }
             if let error = error as? ScriptError,
                NotesAutomationPermission.isAuthorizationError(error.number) { return .unauthorized(detail) }
-            return .failed(detail)
+            return unknown ? .outcomeUnknown(detail) : .failed(detail)
         }
     }
 

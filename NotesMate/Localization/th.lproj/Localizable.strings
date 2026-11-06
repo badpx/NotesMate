@@ -152,3 +152,5 @@
 /* Local draft persistence */
 "Draft could not be saved locally. Keep the app open to avoid losing changes." = "ไม่สามารถบันทึกฉบับร่างในเครื่องได้ โปรดเปิดแอปไว้เพื่อป้องกันการสูญเสียการเปลี่ยนแปลง";
 "Retry" = "ลองอีกครั้ง";
+
+"\nThe save result is unknown. Check Notes before retrying to avoid duplicates. Save started at {0}; destination: {1}." = "\nไม่ทราบผลการบันทึก โปรดตรวจสอบโน้ตก่อนลองอีกครั้งเพื่อหลีกเลี่ยงรายการซ้ำ เริ่มบันทึก: {0}; ปลายทาง: {1}";

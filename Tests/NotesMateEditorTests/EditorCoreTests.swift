@@ -260,7 +260,7 @@ final class EditorCoreTests: XCTestCase {
         XCTAssertTrue(html.contains("&lt;&amp;&gt;"))
         XCTAssertTrue(html.contains("<h1 style=\"font-size:24px\">标题</h1>"))
         XCTAssertTrue(html.contains("<h2 style=\"font-size:18px\"><br></h2>"))
-        XCTAssertTrue(html.contains("<div>a  &lt;b&gt;</div><div><br></div></pre>"))
+        XCTAssertTrue(html.contains("<div>a &nbsp;&lt;b&gt;</div><div><br></div></pre>"))
         document = EditorDocument(paragraphs: [
             Paragraph(kind: .list(.ordered, 1), runs: [InlineRun(text: "A")]),
             Paragraph(kind: .list(.unordered, 3), runs: [InlineRun(text: "B")]),
