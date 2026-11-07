@@ -13,6 +13,8 @@ final class NoteEditorModel: ObservableObject {
     private var hasDraft = false
     private(set) var recoveryMessage: String?
     @Published private(set) var isSaving = false
+    @Published private(set) var lastSaveError: NotesSaver.SaveResult?
+    private var quitCompletions: [(Bool) -> Void] = []
     @Published private(set) var draftPersistenceFailed = false
     private static let saveQueue = DispatchQueue(label: "NotesMate.save", qos: .userInitiated)
 
@@ -86,16 +88,26 @@ final class NoteEditorModel: ObservableObject {
     func exportContent() -> NotesSaver.NoteContent? {
         guard !bridge.isComposing, !isEmpty else { return nil }
         let result = HTMLExporter.export(bridge.document)
-        return NotesSaver.NoteContent(bodyHTML: result.bodyHTML, images: images)
+        return NotesSaver.NoteContent(bodyHTML: result.bodyHTML, images: images,
+                                      target: FolderCatalog.selection)
     }
 
     @discardableResult
     func save(using writer: (NotesSaver.NoteContent) -> NotesSaver.SaveResult = NotesSaver.save) -> NotesSaver.SaveResult? {
-        guard let content = exportContent() else { return nil }
+        guard !isSaving, quitCompletions.isEmpty, let content = exportContent() else { return nil }
         let revision = bridge.document.revision
+        let inputGeneration = bridge.inputGeneration
         let result = writer(content)
-        if result == .success, bridge.document.revision == revision { clear() }
+        finishSave(result, content: content, revision: revision, inputGeneration: inputGeneration)
         return result
+    }
+
+    private func finishSave(_ result: NotesSaver.SaveResult, content: NotesSaver.NoteContent,
+                            revision: UInt64, inputGeneration: UInt64) {
+        if case .successUsingDefaultFolder = result { FolderCatalog.invalidate(content.target) }
+        lastSaveError = result.succeeded ? nil : result
+        if result.succeeded, !bridge.isComposing,
+           bridge.document.revision == revision, bridge.inputGeneration == inputGeneration { clear() }
     }
 
     func clear() {
@@ -114,15 +126,22 @@ final class NoteEditorModel: ObservableObject {
 
     func saveAsync(using writer: @escaping (NotesSaver.NoteContent) -> NotesSaver.SaveResult = NotesSaver.save,
                    completion: @escaping (NotesSaver.SaveResult) -> Void) {
-        guard !isSaving, let content = exportContent() else { return }
+        guard !isSaving, quitCompletions.isEmpty, let content = exportContent() else { return }
         let revision = bridge.document.revision
+        let inputGeneration = bridge.inputGeneration
         isSaving = true
         Self.saveQueue.async {
             let result = autoreleasepool { writer(content) }
             DispatchQueue.main.async {
-                if result == .success, self.bridge.document.revision == revision { self.clear() }
+                self.finishSave(result, content: content, revision: revision, inputGeneration: inputGeneration)
                 self.isSaving = false
                 completion(result)
+                let waiting = self.quitCompletions
+                self.quitCompletions.removeAll()
+                if !waiting.isEmpty {
+                    let ready = self.prepareToQuit()
+                    waiting.forEach { $0(ready) }
+                }
             }
         }
     }
@@ -143,9 +162,16 @@ final class NoteEditorModel: ObservableObject {
 
     /// Retry the current snapshot and synchronously check the actual disk result before quitting.
     func prepareToQuit() -> Bool {
+        guard !isSaving else { return false }
+        bridge.commitComposition()
         persistDraft()
         flushPendingPersist()
         return !draftPersistenceFailed
+    }
+
+    func prepareToQuit(completion: @escaping (Bool) -> Void) {
+        if isSaving { quitCompletions.append(completion) }
+        else { completion(prepareToQuit()) }
     }
 
     deinit { pendingPersist?.cancel() }

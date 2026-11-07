@@ -152,3 +152,5 @@
 /* Local draft persistence */
 "Draft could not be saved locally. Keep the app open to avoid losing changes." = "Không thể lưu bản nháp trên máy. Hãy giữ ứng dụng mở để tránh mất các thay đổi.";
 "Retry" = "Thử lại";
+
+"\nThe save result is unknown. Check Notes before retrying to avoid duplicates. Save started at {0}; destination: {1}." = "\nKhông rõ kết quả lưu. Hãy kiểm tra Ghi chú trước khi thử lại để tránh trùng lặp. Bắt đầu lưu: {0}; đích: {1}.";

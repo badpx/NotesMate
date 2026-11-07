@@ -163,16 +163,14 @@ final class NotesSaverTests: XCTestCase {
 
     func testSaveFallsBackToDefaultFolderWhenTargetIsGone() {
         var calls: [String] = []
-        var cleared = false
         let result = NotesSaver.save(.init(bodyHTML: "<div>正文</div>", images: []), execute: { script in
             calls.append(script)
             if script.contains("folder id") {
                 throw NotesSaver.ScriptError(number: -1728, message: "Can't get folder")
             }
             return "test-note"
-        }, folderID: "x-coredata://A/ICFolder/p1", onInvalidFolder: { cleared = true })
-        XCTAssertEqual(result, .success)
-        XCTAssertTrue(cleared)
+        }, folderID: "x-coredata://A/ICFolder/p1")
+        XCTAssertEqual(result, .successUsingDefaultFolder)
         XCTAssertEqual(calls.count, 2)
         XCTAssertTrue(calls[0].contains("folder id \"x-coredata://A/ICFolder/p1\""))
         XCTAssertTrue(calls[1].contains("default folder of default account"))
@@ -181,13 +179,11 @@ final class NotesSaverTests: XCTestCase {
     func testSaveDoesNotFallBackOnOtherErrors() {
         for number in [-1743, -1744] {
             var calls = 0
-            var cleared = false
             let result = NotesSaver.save(.init(bodyHTML: "<div>正文</div>", images: []), execute: { _ in
                 calls += 1
                 throw NotesSaver.ScriptError(number: number, message: "Not authorized")
-            }, folderID: "x-coredata://A/ICFolder/p1", onInvalidFolder: { cleared = true })
+            }, folderID: "x-coredata://A/ICFolder/p1")
             guard case .unauthorized = result else { return XCTFail("Must be unauthorized: \(number)") }
-            XCTAssertFalse(cleared)
             XCTAssertEqual(calls, 1)
         }
     }

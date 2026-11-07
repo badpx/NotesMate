@@ -152,3 +152,5 @@
 /* Local draft persistence */
 "Draft could not be saved locally. Keep the app open to avoid losing changes." = "下書きをローカルに保存できませんでした。変更が失われないよう、アプリを開いたままにしてください。";
 "Retry" = "再試行";
+
+"\nThe save result is unknown. Check Notes before retrying to avoid duplicates. Save started at {0}; destination: {1}." = "\n保存結果を確認できません。重複を避けるため、再試行する前にメモを確認してください。保存開始：{0}、保存先：{1}。";

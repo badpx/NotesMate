@@ -4,18 +4,30 @@ final class UndoCoordinator {
     let manager = UndoManager()
     var restore: ((EditorSnapshot) -> Void)?
     var snapshot: (() -> EditorSnapshot)?
+    private var nativeGroupGeneration: UInt64 = 0
+
+    init() {
+        // We close groups explicitly when switching between native and semantic
+        // input. NSUndoManager's queued automatic close cannot safely do that too.
+        manager.groupsByEvent = false
+    }
 
     func prepareNativeEvent() {
         guard manager.groupingLevel == 0 else { return }
-        // A semantic transaction may have closed the event's automatic group. Re-open it
-        // before AppKit registers another edit in that SAME event; do not split each key.
+        // Match event grouping, but own the queued close so sealing can invalidate it.
         manager.beginUndoGrouping()
-        if manager.groupingLevel == 2 { manager.endUndoGrouping() }
+        nativeGroupGeneration &+= 1
+        let generation = nativeGroupGeneration
+        DispatchQueue.main.async { [weak self] in
+            guard let self, self.nativeGroupGeneration == generation else { return }
+            if self.manager.groupingLevel == 1 { self.manager.endUndoGrouping() }
+        }
     }
 
     func sealTyping(in view: NSTextView?) {
         view?.breakUndoCoalescing()
         // This manager is editor-owned. Native AppKit calls must have returned before sealing.
+        nativeGroupGeneration &+= 1
         if manager.groupingLevel == 1 { manager.endUndoGrouping() }
         assert(manager.groupingLevel == 0, "Unexpected nested editor undo transaction")
     }
@@ -23,13 +35,10 @@ final class UndoCoordinator {
     func register(_ before: EditorSnapshot, name: String, view: NSTextView?) {
         guard !manager.isUndoing, !manager.isRedoing else { return }
         sealTyping(in: view)
-        let byEvent = manager.groupsByEvent
-        manager.groupsByEvent = false
         manager.beginUndoGrouping()
         registerRestore(before)
         manager.setActionName(name)
         manager.endUndoGrouping()
-        manager.groupsByEvent = byEvent
     }
 
     private func registerRestore(_ state: EditorSnapshot) {

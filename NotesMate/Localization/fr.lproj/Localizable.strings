@@ -152,3 +152,5 @@
 /* Local draft persistence */
 "Draft could not be saved locally. Keep the app open to avoid losing changes." = "Impossible d’enregistrer le brouillon localement. Gardez l’application ouverte pour ne pas perdre vos modifications.";
 "Retry" = "Réessayer";
+
+"\nThe save result is unknown. Check Notes before retrying to avoid duplicates. Save started at {0}; destination: {1}." = "\nLe résultat de l’enregistrement est inconnu. Vérifiez Notes avant de réessayer pour éviter les doublons. Début : {0} ; destination : {1}.";

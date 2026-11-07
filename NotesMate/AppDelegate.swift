@@ -63,7 +63,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
-        guard !panelController.prepareToQuit() else { return .terminateNow }
+        if panelController.isSaving {
+            panelController.prepareToQuit { [weak self] ready in
+                guard let self else { sender.reply(toApplicationShouldTerminate: false); return }
+                sender.reply(toApplicationShouldTerminate: ready || self.confirmQuitWithoutDraft())
+            }
+            return .terminateLater
+        }
+        return panelController.prepareToQuit() || confirmQuitWithoutDraft() ? .terminateNow : .terminateCancel
+    }
+
+    private func confirmQuitWithoutDraft() -> Bool {
         let alert = NSAlert()
         alert.alertStyle = .warning
         alert.messageText = EditorLanguage.text("Draft could not be saved locally. Keep the app open to avoid losing changes.")
@@ -71,7 +81,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         alert.addButton(withTitle: EditorLanguage.text("Quit NotesMate"))
         alert.window.level = .statusBar
         NSApp.activate(ignoringOtherApps: true)
-        return alert.runModal() == .alertFirstButtonReturn ? .terminateCancel : .terminateNow
+        return alert.runModal() != .alertFirstButtonReturn
     }
 
     func applicationWillTerminate(_ notification: Notification) {

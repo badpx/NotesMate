@@ -15,6 +15,7 @@ struct NoteEditorView: View {
     @State private var targetFolder: NotesFolder? = FolderCatalog.target
     @State private var isFolderSelectorAvailable = FolderCatalog.isSelectorAvailable
     @State private var catalogState: CatalogState = .loading
+    @State private var folderRefresh = FolderRefreshState()
 
     private enum CatalogState {
         case loading, loaded
@@ -69,6 +70,13 @@ struct NoteEditorView: View {
                 .accessibilityElement(children: .contain)
             }
             toolbar
+            if let error = model.lastSaveError {
+                Button(EditorLanguage.text("Unable to Save to Notes")) {
+                    showError(message: error.errorDetail ?? "", unauthorized: error.needsAuthorization)
+                }
+                .font(.system(size: 11))
+                .padding(8)
+            }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(Color(nsColor: EditorAppearance.chrome))
@@ -390,7 +398,7 @@ struct NoteEditorView: View {
                 items.append(header)
             }
             for folder in group.folders {
-                let item = makeItem(folder.name, state: target == folder ? .on : .off, targets: &targets) {
+                let item = makeItem(folder.name, state: target?.id == folder.id ? .on : .off, targets: &targets) {
                     select(folder)
                 }
                 item.indentationLevel = showHeaders ? 1 : 0
@@ -427,19 +435,18 @@ struct NoteEditorView: View {
     }
 
     private func reloadCatalog() {
+        let request = folderRefresh.begin()
         catalogState = .loading
         DispatchQueue.global(qos: .userInitiated).async {
             let result = Result { try folderLoader() }
             DispatchQueue.main.async {
+                guard folderRefresh.isCurrent(request) else { return }
                 switch result {
                 case .success(let list):
                     folders = list
                     catalogState = .loaded
-                    // 保存目标失效（不存在或落在废纸篓）时回落到默认文件夹。
-                    if let target = targetFolder,
-                       Self.isTrashedFolder(target) || !list.contains(where: { $0.id == target.id }) {
-                        selectFolder(nil)
-                    }
+                    folderRefresh.reconcile(list.filter { !Self.isTrashedFolder($0) }, for: request)
+                    targetFolder = FolderCatalog.target
                 case .failure(let error):
                     let scriptError = error as? NotesSaver.ScriptError
                     catalogState = .failed(message: error.localizedDescription,
@@ -513,7 +520,7 @@ struct NoteEditorView: View {
         model.saveAsync(using: saveAction ?? NotesSaver.save) { result in
             defer { updateTipBlocking() }
             switch result {
-            case .success:
+            case .success, .successUsingDefaultFolder:
                 FolderCatalog.recordSuccessfulSave()
                 isFolderSelectorAvailable = true
                 targetFolder = FolderCatalog.target
@@ -521,12 +528,9 @@ struct NoteEditorView: View {
                 showSavedNotice = true
                 savedNoticeGeneration += 1
                 DispatchQueue.main.async { onSaved() }
-            case .unauthorized:
-                model.tips.showInformation(
-                    id: "save.automation.permission",
-                    message: EditorLanguage.text("Allow NotesMate to control Notes in System Settings → Privacy & Security → Automation, then retry.")
-                )
-            case .failed(let message):
+            case .unauthorized(let message):
+                showError(message: message, unauthorized: true)
+            case .failed(let message), .outcomeUnknown(let message):
                 showError(message: message, unauthorized: false)
             }
         }
